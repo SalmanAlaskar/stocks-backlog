@@ -22,14 +22,17 @@ integrations where real access requires licensed/government partnerships:
 
 ## Stack
 
-Next.js 16 (App Router, Server Actions) + TypeScript + Tailwind CSS + Prisma 7 (SQLite via the
-`better-sqlite3` driver adapter).
+Next.js 16 (App Router, Server Actions) + TypeScript + Tailwind CSS + Prisma 7 (PostgreSQL via the
+`pg` driver adapter). Deployed on Vercel with a Neon Postgres database provisioned through the
+Vercel Marketplace.
+
+**Live**: https://stocks-backlog.vercel.app
 
 ## Getting started
 
 ```bash
 npm install
-cp .env.example .env
+cp .env.example .env   # then set DATABASE_URL to your own Postgres connection string
 npx prisma migrate dev
 npm run db:seed
 npm run dev
@@ -37,6 +40,13 @@ npm run dev
 
 Open http://localhost:3000, sign up, and step through Nafath verification and KYC (both simulated)
 to reach the dashboard.
+
+## Deployment
+
+`npm run build` runs `prisma migrate deploy && npm run db:seed` before `next build`, so every
+Vercel deployment applies pending migrations and reseeds the public stock/company data
+automatically. `DATABASE_URL` (and related `PG*`/`POSTGRES_*` vars) are supplied by the Neon
+integration connected to the Vercel project across Production, Preview, and Development.
 
 ## Features
 
