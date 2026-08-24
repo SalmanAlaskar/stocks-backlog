@@ -28,7 +28,7 @@ const STOCKS = [
   { ticker: "4002", nameEn: "Mouwasat Medical Services", nameAr: "مواساة للخدمات الطبية", sector: "Healthcare", shariah: true, price: 110.00, pe: 26.4, div: 180 },
   { ticker: "2050", nameEn: "Savola Group", nameAr: "مجموعة صافولا", sector: "Food & Beverages", shariah: true, price: 38.70, pe: 19.2, div: 140 },
   { ticker: "4061", nameEn: "Anaam International Holding", nameAr: "مجموعة أناعم الدولية القابضة", sector: "Consumer Discretionary", shariah: true, price: 22.10, pe: 17.5, div: 90 },
-  { ticker: "3030", nameEn: "Saudi Ceramics", nameAr: "السيراميك السعودية", sector: "Materials", shariah: true, price: 28.74, pe: 15.1, div: 100 },
+  { ticker: "3030", nameEn: "Saudi Cement Company", nameAr: "شركة أسمنت السعودية", sector: "Materials", shariah: true, price: 28.74, pe: 15.1, div: 100 },
   { ticker: "5110", nameEn: "Saudi Electricity Company", nameAr: "الشركة السعودية للكهرباء", sector: "Utilities", shariah: true, price: 17.03, pe: 19.4, div: 130 },
   { ticker: "2330", nameEn: "Advanced Petrochemical Company", nameAr: "المتقدمة للبتروكيماويات", sector: "Materials", shariah: true, price: 25.28, pe: 20.6, div: 170 },
   { ticker: "4190", nameEn: "Jarir Marketing Company", nameAr: "شركة جرير للتسويق", sector: "Consumer Discretionary", shariah: true, price: 17.03, pe: 18.9, div: 220 },
