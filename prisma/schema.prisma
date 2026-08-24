@@ -1,0 +1,248 @@
+// Prisma schema for the stocks-backlog demo brokerage app (TASI / Derayah-style prototype)
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum KycStatus {
+  NOT_STARTED
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum OrderSide {
+  BUY
+  SELL
+}
+
+enum OrderType {
+  MARKET
+  LIMIT
+  STOP
+}
+
+enum OrderValidity {
+  DAY
+  GOOD_TILL_DATE
+}
+
+enum OrderStatus {
+  PENDING
+  FILLED
+  PARTIALLY_FILLED
+  CANCELLED
+  REJECTED
+  EXPIRED
+}
+
+enum WalletTxType {
+  DEPOSIT
+  WITHDRAWAL
+  TRADE_BUY
+  TRADE_SELL
+  IPO_RESERVE
+  IPO_REFUND
+}
+
+model User {
+  id                String    @id @default(cuid())
+  mobile            String    @unique
+  nationalId        String    @unique
+  fullName          String
+  passwordHash      String
+  passwordSalt      String
+
+  nafathVerifiedAt  DateTime?
+  kycStatus         KycStatus @default(NOT_STARTED)
+  riskProfile       String?
+  sourceOfFunds     String?
+
+  twoFactorEnabled  Boolean   @default(false)
+  twoFactorSecret   String?
+  twoFactorBackupCodes String?
+
+  shariahOnly       Boolean   @default(false)
+
+  createdAt         DateTime  @default(now())
+
+  sessions          Session[]
+  wallet            Wallet?
+  watchlists        Watchlist[]
+  orders            Order[]
+  priceAlerts       PriceAlert[]
+  notifications     Notification[]
+  ipoSubscriptions  IpoSubscription[]
+  notificationPrefs NotificationPreference?
+}
+
+model Session {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt         DateTime @default(now())
+  expiresAt         DateTime
+  twoFactorVerified Boolean  @default(true)
+  twoFactorCode     String?
+}
+
+model Wallet {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balanceHalalas    BigInt   @default(0)
+  reservedHalalas   BigInt   @default(0)
+  bankIban  String?
+  updatedAt DateTime @updatedAt
+
+  transactions WalletTransaction[]
+}
+
+model WalletTransaction {
+  id          String       @id @default(cuid())
+  walletId    String
+  wallet      Wallet       @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  type        WalletTxType
+  amountHalalas BigInt
+  description String
+  createdAt   DateTime     @default(now())
+}
+
+model Stock {
+  id                String   @id @default(cuid())
+  ticker            String   @unique
+  nameEn            String
+  nameAr            String
+  sector            String
+  shariahCompliant  Boolean
+  basePriceHalalas  BigInt
+  previousCloseHalalas BigInt
+  peRatio           Float?
+  marketCapHalalas  BigInt?
+  dividendYieldBps  Int?
+  week52LowHalalas  BigInt?
+  week52HighHalalas BigInt?
+
+  watchlistItems    WatchlistItem[]
+  orders            Order[]
+  priceAlerts       PriceAlert[]
+  newsItems         NewsItem[]
+}
+
+model Watchlist {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  createdAt DateTime @default(now())
+
+  items WatchlistItem[]
+}
+
+model WatchlistItem {
+  id          String    @id @default(cuid())
+  watchlistId String
+  watchlist   Watchlist @relation(fields: [watchlistId], references: [id], onDelete: Cascade)
+  stockId     String
+  stock       Stock     @relation(fields: [stockId], references: [id], onDelete: Cascade)
+  addedAt     DateTime  @default(now())
+
+  @@unique([watchlistId, stockId])
+}
+
+model Order {
+  id                String        @id @default(cuid())
+  userId            String
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stockId           String
+  stock             Stock         @relation(fields: [stockId], references: [id])
+  side              OrderSide
+  type              OrderType
+  validity          OrderValidity
+  quantity          Int
+  limitPriceHalalas BigInt?
+  stopPriceHalalas  BigInt?
+  status            OrderStatus   @default(PENDING)
+  fillPriceHalalas  BigInt?
+  filledAt          DateTime?
+  settlementDate    DateTime?
+  goodTillDate      DateTime?
+  createdAt         DateTime      @default(now())
+}
+
+model PriceAlert {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stockId       String
+  stock         Stock    @relation(fields: [stockId], references: [id], onDelete: Cascade)
+  targetHalalas BigInt
+  direction     String   // "ABOVE" | "BELOW"
+  triggeredAt   DateTime?
+  createdAt     DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  body      String
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+}
+
+model NotificationPreference {
+  id              String  @id @default(cuid())
+  userId          String  @unique
+  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  priceAlerts     Boolean @default(true)
+  orderFills      Boolean @default(true)
+  ipoResults      Boolean @default(true)
+  news            Boolean @default(true)
+}
+
+model NewsItem {
+  id          String   @id @default(cuid())
+  stockId     String
+  stock       Stock    @relation(fields: [stockId], references: [id], onDelete: Cascade)
+  headline    String
+  source      String
+  publishedAt DateTime
+}
+
+model Ipo {
+  id                  String   @id @default(cuid())
+  companyNameEn       String
+  companyNameAr       String
+  offerPriceHalalas   BigInt
+  subscriptionStart   DateTime
+  subscriptionEnd     DateTime
+  perInvestorCapHalalas BigInt
+  status              String   // "OPEN" | "CLOSED" | "ALLOCATED"
+
+  subscriptions IpoSubscription[]
+}
+
+model IpoSubscription {
+  id                 String   @id @default(cuid())
+  ipoId              String
+  ipo                Ipo      @relation(fields: [ipoId], references: [id], onDelete: Cascade)
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reservedHalalas    BigInt
+  allocatedHalalas   BigInt?
+  refundedHalalas    BigInt?
+  createdAt          DateTime @default(now())
+}
+
+model AppConfig {
+  id                String  @id @default("singleton")
+  forceMarketOpen   Boolean @default(false)
+}
