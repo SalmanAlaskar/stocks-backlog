@@ -8,6 +8,7 @@ import Sparkline from "@/components/Sparkline";
 import { addToWatchlistAction } from "@/app/watchlists/actions";
 import { createPriceAlertAction, deletePriceAlertAction } from "@/app/alerts/actions";
 import { summarizeNews } from "@/lib/ai";
+import { computeIndicators } from "@/lib/indicators";
 
 const RANGES: Record<string, number> = { "1W": 7, "1M": 30, "1Y": 365, "5Y": 365 * 5 };
 
@@ -23,13 +24,15 @@ export default async function StockDetailPage({
   const { range } = await searchParams;
   const rangeKey = range && RANGES[range] ? range : "1M";
 
-  const stock = await db.stock.findUnique({ where: { ticker }, include: { newsItems: { orderBy: { publishedAt: "desc" }, take: 3 } } });
+  const stock = await db.stock.findUnique({ where: { ticker }, include: { newsItems: { orderBy: { publishedAt: "desc" }, take: 6 } } });
   if (!stock) notFound();
 
   const now = new Date();
   const price = currentPriceHalalas(stock.ticker, stock.previousCloseHalalas, now);
   const changePct = (Number(price - stock.previousCloseHalalas) / Number(stock.previousCloseHalalas)) * 100;
   const candles = dailyHistory(stock.ticker, stock.previousCloseHalalas, RANGES[rangeKey], now);
+  const indicatorCandles = dailyHistory(stock.ticker, stock.previousCloseHalalas, 60, now);
+  const indicators = computeIndicators(indicatorCandles);
   const watchlists = await db.watchlist.findMany({ where: { userId: user.id } });
   const alerts = await db.priceAlert.findMany({ where: { userId: user.id, stockId: stock.id }, orderBy: { createdAt: "desc" } });
 
@@ -37,6 +40,7 @@ export default async function StockDetailPage({
     <div className="space-y-6">
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
+          <p className="text-xs text-zinc-400 uppercase tracking-wide">Company overview</p>
           <h1 className="text-xl font-semibold">{stock.ticker} &middot; {stock.nameEn}</h1>
           <p className="text-sm text-zinc-400" dir="rtl">{stock.nameAr}</p>
           <p className="text-sm text-zinc-500">{stock.sector}</p>
@@ -102,6 +106,42 @@ export default async function StockDetailPage({
         </div>
       </div>
 
+      <div className="bg-white border border-zinc-200 rounded-lg p-4">
+        <h2 className="font-medium mb-1">Technical indicators</h2>
+        <p className="text-xs text-zinc-400 mb-3">
+          Descriptive statistics only — not a trading signal or recommendation. These describe where
+          the price sits relative to its recent history; they do not suggest buying, selling, or holding.
+        </p>
+        <dl className="text-sm grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div>
+            <dt className="text-zinc-500">20-day average</dt>
+            <dd>{indicators.sma20Halalas ? formatSar(indicators.sma20Halalas) : "N/A (not enough history)"}</dd>
+            {indicators.vsSma20Pct != null && (
+              <dd className={indicators.vsSma20Pct >= 0 ? "text-emerald-700" : "text-red-600"}>
+                Price is {formatPercent(indicators.vsSma20Pct)} vs. this average
+              </dd>
+            )}
+          </div>
+          <div>
+            <dt className="text-zinc-500">50-day average</dt>
+            <dd>{indicators.sma50Halalas ? formatSar(indicators.sma50Halalas) : "N/A (not enough history)"}</dd>
+            {indicators.vsSma50Pct != null && (
+              <dd className={indicators.vsSma50Pct >= 0 ? "text-emerald-700" : "text-red-600"}>
+                Price is {formatPercent(indicators.vsSma50Pct)} vs. this average
+              </dd>
+            )}
+          </div>
+          <div>
+            <dt className="text-zinc-500">60-day trend</dt>
+            <dd className="capitalize">{indicators.trendLabel}</dd>
+          </div>
+          <div>
+            <dt className="text-zinc-500">60-day change</dt>
+            <dd className={indicators.rangeChangePct >= 0 ? "text-emerald-700" : "text-red-600"}>{formatPercent(indicators.rangeChangePct)}</dd>
+          </div>
+        </dl>
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="bg-white border border-zinc-200 rounded-lg p-4">
           <h2 className="font-medium mb-3">Price alerts</h2>
@@ -141,16 +181,20 @@ export default async function StockDetailPage({
         </div>
 
         <div className="bg-white border border-zinc-200 rounded-lg p-4">
-          <h2 className="font-medium mb-2">Recent news</h2>
+          <h2 className="font-medium mb-2">Daily news</h2>
           {stock.newsItems.length > 0 ? (
             <>
               <p className="text-xs text-zinc-400 mb-2">AI-style summary (rule-based demo, not a live model call):</p>
               <p className="text-sm text-zinc-700 mb-3">{summarizeNews(stock, stock.newsItems)}</p>
-              <ul className="space-y-1 text-xs text-zinc-500">
+              <ul className="space-y-2 text-sm">
                 {stock.newsItems.map((n) => (
-                  <li key={n.id} className="flex justify-between">
+                  <li key={n.id} className="flex justify-between gap-3">
                     <span>{n.headline}</span>
-                    <span className="shrink-0 ml-4">{n.source}</span>
+                    <span className="shrink-0 text-xs text-zinc-400 text-right">
+                      {n.publishedAt.toLocaleDateString("en-US")}
+                      <br />
+                      {n.source}
+                    </span>
                   </li>
                 ))}
               </ul>

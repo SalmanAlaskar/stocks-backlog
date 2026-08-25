@@ -74,17 +74,38 @@ async function main() {
       "Al Rajhi Bank reports higher net income on financing growth",
       "Al Rajhi Bank expands digital banking services",
     ],
+    "3030": [
+      "Saudi Cement Company reports steady quarterly production volumes",
+      "Saudi Cement announces maintenance schedule for kiln capacity",
+      "Cement sector sees demand tied to Vision 2030 construction projects",
+    ],
+    "5110": [
+      "Saudi Electricity Company (Saudi Energy) updates on grid investment plan",
+      "Saudi Energy reports on fuel-cost pass-through mechanism",
+      "Utility sector regulatory tariff review announced",
+    ],
+    "2330": [
+      "Advanced Petrochemical Company reports margin pressure from feedstock costs",
+      "Advanced Petrochemical outlines turnaround maintenance timeline",
+      "Petrochemical sector faces continued oversupply headwinds",
+    ],
+    "4190": [
+      "Jarir Marketing Company reports steady same-store sales growth",
+      "Jarir expands e-commerce and delivery capabilities",
+      "Retail sector sees seasonal demand pickup",
+    ],
   };
   for (const [ticker, headlines] of Object.entries(NEWS)) {
     const stock = await db.stock.findUnique({ where: { ticker } });
     if (!stock) continue;
     const existingNews = await db.newsItem.count({ where: { stockId: stock.id } });
     if (existingNews > 0) continue;
+    const sources = ["Argaam", "Al Eqtisadiah", "Maaal"];
     await db.newsItem.createMany({
       data: headlines.map((headline, i) => ({
         stockId: stock.id,
         headline,
-        source: i === 0 ? "Argaam" : "Al Eqtisadiah",
+        source: sources[i % sources.length],
         publishedAt: new Date(Date.now() - i * 86400000),
       })),
     });
