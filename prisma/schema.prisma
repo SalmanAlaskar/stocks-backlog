@@ -243,6 +243,7 @@ model IpoSubscription {
 }
 
 model AppConfig {
-  id                String  @id @default("singleton")
-  forceMarketOpen   Boolean @default(false)
+  id                     String  @id @default("singleton")
+  forceMarketOpen        Boolean @default(false)
+  lastCloseRolloverDate  String?
 }

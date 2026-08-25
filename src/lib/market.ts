@@ -23,6 +23,12 @@ export function isTradingDay(date: Date): boolean {
   return TRADING_DAYS.includes(getRiyadhParts(date).weekday);
 }
 
+/** Riyadh-local calendar date as "YYYY-MM-DD", for once-per-day idempotency checks. */
+export function riyadhDateString(date: Date): string {
+  const fmt = new Intl.DateTimeFormat("en-CA", { timeZone: RIYADH_TZ, year: "numeric", month: "2-digit", day: "2-digit" });
+  return fmt.format(date);
+}
+
 export function isWithinTradingHours(date: Date): boolean {
   const { hour, minute } = getRiyadhParts(date);
   const minutesNow = hour * 60 + minute;
