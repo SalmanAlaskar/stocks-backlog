@@ -37,13 +37,15 @@ const STOCKS = [
 async function main() {
   for (const s of STOCKS) {
     const basePrice = sar(s.price);
-    const fields = {
+    // previousCloseHalalas/basePriceHalalas are live-tracked state rolled forward
+    // daily by the close-market cron (see src/app/api/cron/close-market) — they
+    // must NOT be reset by re-seeding on every deploy, or the rollover is undone
+    // every time the app ships. Only descriptive/reference fields are updated.
+    const updateFields = {
       nameEn: s.nameEn,
       nameAr: s.nameAr,
       sector: s.sector,
       shariahCompliant: s.shariah,
-      basePriceHalalas: basePrice,
-      previousCloseHalalas: basePrice,
       peRatio: s.pe || null,
       marketCapHalalas: basePrice * BigInt(1_000_000_000),
       dividendYieldBps: s.div,
@@ -52,8 +54,8 @@ async function main() {
     };
     await db.stock.upsert({
       where: { ticker: s.ticker },
-      update: fields,
-      create: { ticker: s.ticker, ...fields },
+      update: updateFields,
+      create: { ticker: s.ticker, ...updateFields, basePriceHalalas: basePrice, previousCloseHalalas: basePrice },
     });
   }
 
