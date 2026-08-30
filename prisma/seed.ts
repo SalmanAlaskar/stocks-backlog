@@ -121,9 +121,20 @@ async function main() {
         companyNameAr: "مجموعة نسك للتجزئة",
         offerPriceHalalas: sar(20),
         subscriptionStart: new Date(Date.now() - 2 * 86400000),
-        subscriptionEnd: new Date(Date.now() + 3 * 86400000),
+        subscriptionEnd: new Date(Date.now() + 5 * 86400000),
         perInvestorCapHalalas: sar(500_000),
         status: "OPEN",
+      },
+    });
+  } else if (existingIpo.status !== "ALLOCATED") {
+    // Keep the demo subscribable: a fixed window computed once at first seed
+    // would otherwise go permanently stale in real time. Once allocation has
+    // run, this branch is skipped and existing subscriptions are left alone.
+    await db.ipo.update({
+      where: { id: existingIpo.id },
+      data: {
+        subscriptionStart: new Date(Date.now() - 2 * 86400000),
+        subscriptionEnd: new Date(Date.now() + 5 * 86400000),
       },
     });
   }
