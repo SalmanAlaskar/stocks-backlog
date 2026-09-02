@@ -4,23 +4,35 @@ import { getHoldings } from "@/lib/portfolio";
 import { formatSar, formatPercent } from "@/lib/money";
 import { analyzePortfolioRisk } from "@/lib/ai";
 
-export default async function PortfolioPage() {
+export default async function PortfolioPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ sector?: string; shariah?: string }>;
+}) {
   const user = await requireVerifiedUser();
-  const holdings = await getHoldings(user.id);
+  const allHoldings = await getHoldings(user.id);
+  const { sector, shariah } = await searchParams;
 
-  const marketValue = holdings.reduce((s, h) => s + h.marketValueHalalas, 0n);
-  const costBasis = holdings.reduce((s, h) => s + h.costBasisHalalas, 0n);
+  // Risk insights and the sector/compliance breakdowns always reflect the whole
+  // portfolio; only the holdings table itself is filtered.
+  const marketValue = allHoldings.reduce((s, h) => s + h.marketValueHalalas, 0n);
+  const costBasis = allHoldings.reduce((s, h) => s + h.costBasisHalalas, 0n);
   const unrealized = marketValue - costBasis;
   const unrealizedPct = costBasis > 0n ? (Number(unrealized) / Number(costBasis)) * 100 : 0;
 
   const bySector = new Map<string, bigint>();
   let compliantValue = 0n;
   let nonCompliantValue = 0n;
-  for (const h of holdings) {
+  for (const h of allHoldings) {
     bySector.set(h.stock.sector, (bySector.get(h.stock.sector) ?? 0n) + h.marketValueHalalas);
     if (h.stock.shariahCompliant) compliantValue += h.marketValueHalalas;
     else nonCompliantValue += h.marketValueHalalas;
   }
+
+  const sectors = [...new Set(allHoldings.map((h) => h.stock.sector))].sort();
+  const holdings = allHoldings.filter(
+    (h) => (!sector || h.stock.sector === sector) && (shariah !== "1" || h.stock.shariahCompliant),
+  );
 
   return (
     <div className="space-y-6">
@@ -46,11 +58,31 @@ export default async function PortfolioPage() {
       </div>
 
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-        <h2 className="font-medium mb-3">Holdings</h2>
-        {holdings.length === 0 ? (
+        <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
+          <h2 className="font-medium">Holdings</h2>
+          {allHoldings.length > 0 && (
+            <form className="flex items-center gap-2" method="get">
+              <select name="sector" defaultValue={sector ?? ""} className="bg-zinc-900 text-zinc-100 rounded border border-zinc-700 px-2 py-1.5 text-sm">
+                <option value="">All sectors</option>
+                {sectors.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+              <label className="flex items-center gap-2 text-sm text-zinc-300">
+                <input type="checkbox" name="shariah" value="1" defaultChecked={shariah === "1"} />
+                Shariah-compliant only
+              </label>
+              <button type="submit" className="rounded bg-emerald-600 text-white px-3 py-1.5 text-sm hover:bg-emerald-500">Filter</button>
+              {(sector || shariah === "1") && <Link href="/portfolio" className="text-sm text-zinc-400 hover:text-zinc-200">Clear</Link>}
+            </form>
+          )}
+        </div>
+        {allHoldings.length === 0 ? (
           <p className="text-sm text-zinc-400">
             No positions yet. <Link href="/market" className="text-emerald-400">Browse the market</Link>.
           </p>
+        ) : holdings.length === 0 ? (
+          <p className="text-sm text-zinc-400">No holdings match these filters.</p>
         ) : (
           <table className="w-full text-sm">
             <thead>
@@ -88,7 +120,7 @@ export default async function PortfolioPage() {
         )}
       </div>
 
-      {holdings.length > 0 && (
+      {allHoldings.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
             <h2 className="font-medium mb-3">By sector</h2>
@@ -117,12 +149,12 @@ export default async function PortfolioPage() {
         </div>
       )}
 
-      {holdings.length > 0 && (
+      {allHoldings.length > 0 && (
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
           <h2 className="font-medium mb-1">AI-style risk insights</h2>
           <p className="text-xs text-zinc-500 mb-3">Rule-based demo, not a live model call. Informational only — not financial advice.</p>
           <ul className="space-y-2 text-sm">
-            {analyzePortfolioRisk(holdings).map((insight, i) => (
+            {analyzePortfolioRisk(allHoldings).map((insight, i) => (
               <li key={i} className={`flex gap-2 ${insight.severity === "warning" ? "text-amber-400" : "text-zinc-300"}`}>
                 <span>{insight.severity === "warning" ? "!" : "i"}</span>
                 <span>{insight.message}</span>

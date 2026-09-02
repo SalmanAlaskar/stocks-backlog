@@ -5,8 +5,13 @@ import { currentPriceHalalas } from "@/lib/market";
 import { formatSar, formatPercent } from "@/lib/money";
 import { createWatchlistAction, deleteWatchlistAction, removeFromWatchlistAction } from "./actions";
 
-export default async function WatchlistsPage() {
+export default async function WatchlistsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ shariah?: string }>;
+}) {
   const user = await requireVerifiedUser();
+  const { shariah } = await searchParams;
   const watchlists = await db.watchlist.findMany({
     where: { userId: user.id },
     orderBy: { createdAt: "asc" },
@@ -30,7 +35,20 @@ export default async function WatchlistsPage() {
         <p className="text-sm text-zinc-400">No watchlists yet. Create one above, or add stocks from the <Link href="/market" className="text-emerald-400">market page</Link>.</p>
       )}
 
-      {watchlists.map((wl) => (
+      {watchlists.length > 0 && (
+        <form className="flex items-center gap-3" method="get">
+          <label className="flex items-center gap-2 text-sm text-zinc-300">
+            <input type="checkbox" name="shariah" value="1" defaultChecked={shariah === "1"} />
+            Shariah-compliant only
+          </label>
+          <button type="submit" className="rounded bg-emerald-600 text-white px-3 py-1.5 text-sm hover:bg-emerald-500">Filter</button>
+          {shariah === "1" && <Link href="/watchlists" className="text-sm text-zinc-400 hover:text-zinc-200">Clear</Link>}
+        </form>
+      )}
+
+      {watchlists.map((wl) => {
+        const items = shariah === "1" ? wl.items.filter((item) => item.stock.shariahCompliant) : wl.items;
+        return (
         <div key={wl.id} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-medium">{wl.name}</h2>
@@ -39,12 +57,12 @@ export default async function WatchlistsPage() {
               <button type="submit" className="text-xs text-red-400 hover:underline">Delete watchlist</button>
             </form>
           </div>
-          {wl.items.length === 0 ? (
-            <p className="text-sm text-zinc-400">No stocks added yet.</p>
+          {items.length === 0 ? (
+            <p className="text-sm text-zinc-400">{wl.items.length === 0 ? "No stocks added yet." : "No stocks match this filter."}</p>
           ) : (
             <table className="w-full text-sm">
               <tbody>
-                {wl.items.map((item) => {
+                {items.map((item) => {
                   const price = currentPriceHalalas(item.stock.ticker, item.stock.previousCloseHalalas, now, item.stock.lastRealPriceHalalas, item.stock.lastRealPriceAt);
                   const changePct = (Number(price - item.stock.previousCloseHalalas) / Number(item.stock.previousCloseHalalas)) * 100;
                   return (
@@ -68,7 +86,8 @@ export default async function WatchlistsPage() {
             </table>
           )}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

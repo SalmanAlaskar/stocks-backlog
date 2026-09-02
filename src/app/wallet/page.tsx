@@ -1,13 +1,30 @@
+import Link from "next/link";
 import { requireVerifiedUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatSar } from "@/lib/money";
 import { DepositForm, WithdrawForm } from "@/components/WalletForms";
+import { WalletTxType } from "@/generated/prisma/client";
 
-export default async function WalletPage() {
+const TX_TYPES = Object.values(WalletTxType);
+
+export default async function WalletPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ type?: string }>;
+}) {
   const user = await requireVerifiedUser();
+  const { type } = await searchParams;
+  const typeFilter = type && (TX_TYPES as string[]).includes(type) ? (type as WalletTxType) : undefined;
+
   const wallet = await db.wallet.findUniqueOrThrow({
     where: { userId: user.id },
-    include: { transactions: { orderBy: { createdAt: "desc" }, take: 20 } },
+    include: {
+      transactions: {
+        where: typeFilter ? { type: typeFilter } : {},
+        orderBy: { createdAt: "desc" },
+        take: 20,
+      },
+    },
   });
   const available = wallet.balanceHalalas - wallet.reservedHalalas;
 
@@ -45,7 +62,19 @@ export default async function WalletPage() {
       </div>
 
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-        <h2 className="font-medium mb-3">Transaction history</h2>
+        <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
+          <h2 className="font-medium">Transaction history</h2>
+          <form className="flex items-center gap-2" method="get">
+            <select name="type" defaultValue={type ?? ""} className="bg-zinc-900 text-zinc-100 rounded border border-zinc-700 px-2 py-1.5 text-sm">
+              <option value="">All types</option>
+              {TX_TYPES.map((t) => (
+                <option key={t} value={t}>{t.replace("_", " ")}</option>
+              ))}
+            </select>
+            <button type="submit" className="rounded bg-emerald-600 text-white px-3 py-1.5 text-sm hover:bg-emerald-500">Filter</button>
+            {type && <Link href="/wallet" className="text-sm text-zinc-400 hover:text-zinc-200">Clear</Link>}
+          </form>
+        </div>
         {wallet.transactions.length === 0 ? (
           <p className="text-sm text-zinc-400">No transactions yet.</p>
         ) : (

@@ -1,8 +1,10 @@
+import Link from "next/link";
 import { requireVerifiedUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { evaluatePendingOrders } from "@/lib/orders";
 import { formatSar } from "@/lib/money";
 import { cancelOrderAction } from "./actions";
+import { OrderStatus, OrderSide } from "@/generated/prisma/client";
 
 const STATUS_STYLES: Record<string, string> = {
   PENDING: "bg-amber-500/10 text-amber-400",
@@ -13,12 +15,25 @@ const STATUS_STYLES: Record<string, string> = {
   EXPIRED: "bg-zinc-800 text-zinc-400",
 };
 
-export default async function OrdersPage() {
+const STATUSES = Object.values(OrderStatus);
+
+export default async function OrdersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string; side?: string }>;
+}) {
   const user = await requireVerifiedUser();
   await evaluatePendingOrders(user.id);
+  const { status, side } = await searchParams;
+  const statusFilter = status && (STATUSES as string[]).includes(status) ? (status as OrderStatus) : undefined;
+  const sideFilter = side === "BUY" || side === "SELL" ? (side as OrderSide) : undefined;
 
   const orders = await db.order.findMany({
-    where: { userId: user.id },
+    where: {
+      userId: user.id,
+      ...(statusFilter ? { status: statusFilter } : {}),
+      ...(sideFilter ? { side: sideFilter } : {}),
+    },
     orderBy: { createdAt: "desc" },
     include: { stock: true },
   });
@@ -29,6 +44,22 @@ export default async function OrdersPage() {
         <h1 className="text-xl font-semibold">Order history</h1>
         <p className="text-sm text-zinc-400">Track pending, filled, and settled orders. Tadawul settles on T+2.</p>
       </div>
+
+      <form className="flex flex-wrap items-center gap-3" method="get">
+        <select name="status" defaultValue={status ?? ""} className="bg-zinc-900 text-zinc-100 rounded border border-zinc-700 px-3 py-2 text-sm">
+          <option value="">All statuses</option>
+          {STATUSES.map((s) => (
+            <option key={s} value={s}>{s.replace("_", " ")}</option>
+          ))}
+        </select>
+        <select name="side" defaultValue={side ?? ""} className="bg-zinc-900 text-zinc-100 rounded border border-zinc-700 px-3 py-2 text-sm">
+          <option value="">Buy &amp; sell</option>
+          <option value="BUY">Buy only</option>
+          <option value="SELL">Sell only</option>
+        </select>
+        <button type="submit" className="rounded bg-emerald-600 text-white px-4 py-2 text-sm hover:bg-emerald-500">Filter</button>
+        {(status || side) && <Link href="/orders" className="text-sm text-zinc-400 hover:text-zinc-200">Clear filters</Link>}
+      </form>
 
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-x-auto">
         {orders.length === 0 ? (

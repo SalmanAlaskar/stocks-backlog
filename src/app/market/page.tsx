@@ -8,28 +8,32 @@ import DataSourceNote from "@/components/DataSourceNote";
 export default async function MarketPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; shariah?: string }>;
+  searchParams: Promise<{ q?: string; shariah?: string; sector?: string }>;
 }) {
   await requireVerifiedUser();
-  const { q, shariah } = await searchParams;
+  const { q, shariah, sector } = await searchParams;
 
-  const stocks = await db.stock.findMany({
-    where: {
-      AND: [
-        shariah === "1" ? { shariahCompliant: true } : {},
-        q
-          ? {
-              OR: [
-                { ticker: { contains: q } },
-                { nameEn: { contains: q } },
-                { nameAr: { contains: q } },
-              ],
-            }
-          : {},
-      ],
-    },
-    orderBy: { ticker: "asc" },
-  });
+  const [stocks, sectors] = await Promise.all([
+    db.stock.findMany({
+      where: {
+        AND: [
+          shariah === "1" ? { shariahCompliant: true } : {},
+          sector ? { sector } : {},
+          q
+            ? {
+                OR: [
+                  { ticker: { contains: q } },
+                  { nameEn: { contains: q } },
+                  { nameAr: { contains: q } },
+                ],
+              }
+            : {},
+        ],
+      },
+      orderBy: { ticker: "asc" },
+    }),
+    db.stock.findMany({ distinct: ["sector"], select: { sector: true }, orderBy: { sector: "asc" } }),
+  ]);
 
   const now = new Date();
 
@@ -49,6 +53,16 @@ export default async function MarketPage({
           placeholder="Search ticker or company name..."
           className="bg-zinc-900 text-zinc-100 placeholder:text-zinc-400 flex-1 min-w-[200px] rounded border border-zinc-700 px-3 py-2 text-sm"
         />
+        <select
+          name="sector"
+          defaultValue={sector ?? ""}
+          className="bg-zinc-900 text-zinc-100 rounded border border-zinc-700 px-3 py-2 text-sm"
+        >
+          <option value="">All sectors</option>
+          {sectors.map((s) => (
+            <option key={s.sector} value={s.sector}>{s.sector}</option>
+          ))}
+        </select>
         <label className="flex items-center gap-2 text-sm text-zinc-300">
           <input type="checkbox" name="shariah" value="1" defaultChecked={shariah === "1"} />
           Shariah-compliant only
@@ -56,6 +70,9 @@ export default async function MarketPage({
         <button type="submit" className="rounded bg-emerald-600 text-white px-4 py-2 text-sm hover:bg-emerald-500">
           Search
         </button>
+        {(q || shariah === "1" || sector) && (
+          <Link href="/market" className="text-sm text-zinc-400 hover:text-zinc-200">Clear filters</Link>
+        )}
       </form>
 
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
