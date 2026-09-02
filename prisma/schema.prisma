@@ -51,25 +51,25 @@ enum WalletTxType {
 }
 
 model User {
-  id                String    @id @default(cuid())
-  mobile            String    @unique
-  nationalId        String    @unique
-  fullName          String
-  passwordHash      String
-  passwordSalt      String
+  id           String @id @default(cuid())
+  mobile       String @unique
+  nationalId   String @unique
+  fullName     String
+  passwordHash String
+  passwordSalt String
 
-  nafathVerifiedAt  DateTime?
-  kycStatus         KycStatus @default(NOT_STARTED)
-  riskProfile       String?
-  sourceOfFunds     String?
+  nafathVerifiedAt DateTime?
+  kycStatus        KycStatus @default(NOT_STARTED)
+  riskProfile      String?
+  sourceOfFunds    String?
 
-  twoFactorEnabled  Boolean   @default(false)
-  twoFactorSecret   String?
+  twoFactorEnabled     Boolean @default(false)
+  twoFactorSecret      String?
   twoFactorBackupCodes String?
 
-  shariahOnly       Boolean   @default(false)
+  shariahOnly Boolean @default(false)
 
-  createdAt         DateTime  @default(now())
+  createdAt DateTime @default(now())
 
   sessions          Session[]
   wallet            Wallet?
@@ -80,19 +80,49 @@ model User {
   ipoSubscriptions  IpoSubscription[]
   notificationPrefs NotificationPreference?
   abianAccount      AbianAccount?
+  rajhiFundAccount  RajhiFundAccount?
+}
+
+model RajhiFundAccount {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  totalValueHalalas  BigInt
+  marketValueHalalas BigInt
+  totalCashHalalas   BigInt
+  totalGainHalalas   BigInt
+  todayGainHalalas   BigInt
+  todayGainBps       Int
+  updatedAt          DateTime @updatedAt
+  createdAt          DateTime @default(now())
+
+  holdings RajhiFundHolding[]
+}
+
+model RajhiFundHolding {
+  id                 String           @id @default(cuid())
+  rajhiFundAccountId String
+  rajhiFundAccount   RajhiFundAccount @relation(fields: [rajhiFundAccountId], references: [id], onDelete: Cascade)
+  nameEn             String
+  quantity           Float
+  lastPriceHalalas   BigInt
+  avgCostHalalas     BigInt
+  marketValueHalalas BigInt
+  gainHalalas        BigInt
+  gainBps            Int
 }
 
 model AbianAccount {
-  id                            String   @id @default(cuid())
-  userId                        String   @unique
-  user                          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  marketValueHalalas            BigInt
-  returnsSinceInceptionHalalas  BigInt
-  currentReturnHalalas          BigInt
-  currentReturnBps              Int
-  savingsHalalas                BigInt
-  updatedAt                     DateTime @updatedAt
-  createdAt                     DateTime @default(now())
+  id                           String   @id @default(cuid())
+  userId                       String   @unique
+  user                         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  marketValueHalalas           BigInt
+  returnsSinceInceptionHalalas BigInt
+  currentReturnHalalas         BigInt
+  currentReturnBps             Int
+  savingsHalalas               BigInt
+  updatedAt                    DateTime @updatedAt
+  createdAt                    DateTime @default(now())
 
   funds AbianFund[]
 }
@@ -117,46 +147,46 @@ model Session {
 }
 
 model Wallet {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  balanceHalalas    BigInt   @default(0)
-  reservedHalalas   BigInt   @default(0)
-  bankIban  String?
-  updatedAt DateTime @updatedAt
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balanceHalalas  BigInt   @default(0)
+  reservedHalalas BigInt   @default(0)
+  bankIban        String?
+  updatedAt       DateTime @updatedAt
 
   transactions WalletTransaction[]
 }
 
 model WalletTransaction {
-  id          String       @id @default(cuid())
-  walletId    String
-  wallet      Wallet       @relation(fields: [walletId], references: [id], onDelete: Cascade)
-  type        WalletTxType
+  id            String       @id @default(cuid())
+  walletId      String
+  wallet        Wallet       @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  type          WalletTxType
   amountHalalas BigInt
-  description String
-  createdAt   DateTime     @default(now())
+  description   String
+  createdAt     DateTime     @default(now())
 }
 
 model Stock {
-  id                String   @id @default(cuid())
-  ticker            String   @unique
-  nameEn            String
-  nameAr            String
-  sector            String
-  shariahCompliant  Boolean
-  basePriceHalalas  BigInt
+  id                   String  @id @default(cuid())
+  ticker               String  @unique
+  nameEn               String
+  nameAr               String
+  sector               String
+  shariahCompliant     Boolean
+  basePriceHalalas     BigInt
   previousCloseHalalas BigInt
-  peRatio           Float?
-  marketCapHalalas  BigInt?
-  dividendYieldBps  Int?
-  week52LowHalalas  BigInt?
-  week52HighHalalas BigInt?
+  peRatio              Float?
+  marketCapHalalas     BigInt?
+  dividendYieldBps     Int?
+  week52LowHalalas     BigInt?
+  week52HighHalalas    BigInt?
 
-  watchlistItems    WatchlistItem[]
-  orders            Order[]
-  priceAlerts       PriceAlert[]
-  newsItems         NewsItem[]
+  watchlistItems WatchlistItem[]
+  orders         Order[]
+  priceAlerts    PriceAlert[]
+  newsItems      NewsItem[]
 }
 
 model Watchlist {
@@ -201,36 +231,36 @@ model Order {
 }
 
 model PriceAlert {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   stockId       String
-  stock         Stock    @relation(fields: [stockId], references: [id], onDelete: Cascade)
+  stock         Stock     @relation(fields: [stockId], references: [id], onDelete: Cascade)
   targetHalalas BigInt
-  direction     String   // "ABOVE" | "BELOW"
+  direction     String // "ABOVE" | "BELOW"
   triggeredAt   DateTime?
-  createdAt     DateTime @default(now())
+  createdAt     DateTime  @default(now())
 }
 
 model Notification {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   type      String
   title     String
   body      String
   readAt    DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 }
 
 model NotificationPreference {
-  id              String  @id @default(cuid())
-  userId          String  @unique
-  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  priceAlerts     Boolean @default(true)
-  orderFills      Boolean @default(true)
-  ipoResults      Boolean @default(true)
-  news            Boolean @default(true)
+  id          String  @id @default(cuid())
+  userId      String  @unique
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  priceAlerts Boolean @default(true)
+  orderFills  Boolean @default(true)
+  ipoResults  Boolean @default(true)
+  news        Boolean @default(true)
 }
 
 model NewsItem {
@@ -243,32 +273,32 @@ model NewsItem {
 }
 
 model Ipo {
-  id                  String   @id @default(cuid())
-  companyNameEn       String
-  companyNameAr       String
-  offerPriceHalalas   BigInt
-  subscriptionStart   DateTime
-  subscriptionEnd     DateTime
+  id                    String   @id @default(cuid())
+  companyNameEn         String
+  companyNameAr         String
+  offerPriceHalalas     BigInt
+  subscriptionStart     DateTime
+  subscriptionEnd       DateTime
   perInvestorCapHalalas BigInt
-  status              String   // "OPEN" | "CLOSED" | "ALLOCATED"
+  status                String // "OPEN" | "CLOSED" | "ALLOCATED"
 
   subscriptions IpoSubscription[]
 }
 
 model IpoSubscription {
-  id                 String   @id @default(cuid())
-  ipoId              String
-  ipo                Ipo      @relation(fields: [ipoId], references: [id], onDelete: Cascade)
-  userId             String
-  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  reservedHalalas    BigInt
-  allocatedHalalas   BigInt?
-  refundedHalalas    BigInt?
-  createdAt          DateTime @default(now())
+  id               String   @id @default(cuid())
+  ipoId            String
+  ipo              Ipo      @relation(fields: [ipoId], references: [id], onDelete: Cascade)
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reservedHalalas  BigInt
+  allocatedHalalas BigInt?
+  refundedHalalas  BigInt?
+  createdAt        DateTime @default(now())
 }
 
 model AppConfig {
-  id                     String  @id @default("singleton")
-  forceMarketOpen        Boolean @default(false)
-  lastCloseRolloverDate  String?
+  id                    String  @id @default("singleton")
+  forceMarketOpen       Boolean @default(false)
+  lastCloseRolloverDate String?
 }

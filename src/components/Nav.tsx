@@ -9,6 +9,7 @@ const LINKS = [
   { href: "/orders", label: "Orders" },
   { href: "/portfolio", label: "Portfolio" },
   { href: "/abian", label: "Abian" },
+  { href: "/alrajhi", label: "Al Rajhi" },
   { href: "/ipo", label: "IPO" },
   { href: "/assistant", label: "Assistant" },
   { href: "/settings", label: "Settings" },
