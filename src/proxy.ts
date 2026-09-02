@@ -13,6 +13,7 @@ const PROTECTED_PREFIXES = [
   "/assistant",
   "/ipo",
   "/statements",
+  "/abian",
 ];
 
 export function proxy(request: NextRequest) {
@@ -43,5 +44,6 @@ export const config = {
     "/assistant/:path*",
     "/ipo/:path*",
     "/statements/:path*",
+    "/abian/:path*",
   ],
 };

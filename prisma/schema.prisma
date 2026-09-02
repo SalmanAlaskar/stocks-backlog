@@ -79,6 +79,31 @@ model User {
   notifications     Notification[]
   ipoSubscriptions  IpoSubscription[]
   notificationPrefs NotificationPreference?
+  abianAccount      AbianAccount?
+}
+
+model AbianAccount {
+  id                            String   @id @default(cuid())
+  userId                        String   @unique
+  user                          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  marketValueHalalas            BigInt
+  returnsSinceInceptionHalalas  BigInt
+  currentReturnHalalas          BigInt
+  currentReturnBps              Int
+  savingsHalalas                BigInt
+  updatedAt                     DateTime @updatedAt
+  createdAt                     DateTime @default(now())
+
+  funds AbianFund[]
+}
+
+model AbianFund {
+  id             String       @id @default(cuid())
+  abianAccountId String
+  abianAccount   AbianAccount @relation(fields: [abianAccountId], references: [id], onDelete: Cascade)
+  nameEn         String
+  nameAr         String
+  valueHalalas   BigInt
 }
 
 model Session {

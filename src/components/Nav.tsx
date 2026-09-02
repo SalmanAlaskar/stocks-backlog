@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/watchlists", label: "Watchlists" },
   { href: "/orders", label: "Orders" },
   { href: "/portfolio", label: "Portfolio" },
+  { href: "/abian", label: "Abian" },
   { href: "/ipo", label: "IPO" },
   { href: "/assistant", label: "Assistant" },
   { href: "/settings", label: "Settings" },
