@@ -5,13 +5,21 @@ import { currentPriceHalalas, hasFreshRealPrice } from "@/lib/market";
 import { formatSar, formatPercent } from "@/lib/money";
 import DataSourceNote from "@/components/DataSourceNote";
 
+const SORTS = {
+  ticker: { label: "Ticker (A-Z)" },
+  change_desc: { label: "Highest increase first" },
+  change_asc: { label: "Biggest decrease first" },
+} as const;
+type SortKey = keyof typeof SORTS;
+
 export default async function MarketPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; shariah?: string; sector?: string }>;
+  searchParams: Promise<{ q?: string; shariah?: string; sector?: string; sort?: string }>;
 }) {
   await requireVerifiedUser();
-  const { q, shariah, sector } = await searchParams;
+  const { q, shariah, sector, sort } = await searchParams;
+  const sortKey: SortKey = sort && sort in SORTS ? (sort as SortKey) : "ticker";
 
   const [stocks, sectors] = await Promise.all([
     db.stock.findMany({
@@ -36,6 +44,15 @@ export default async function MarketPage({
   ]);
 
   const now = new Date();
+
+  const rows = stocks.map((s) => {
+    const price = currentPriceHalalas(s.ticker, s.previousCloseHalalas, now, s.lastRealPriceHalalas, s.lastRealPriceAt);
+    const changePct = (Number(price - s.previousCloseHalalas) / Number(s.previousCloseHalalas)) * 100;
+    const isReal = hasFreshRealPrice(s.lastRealPriceAt, now);
+    return { stock: s, price, changePct, isReal };
+  });
+  if (sortKey === "change_desc") rows.sort((a, b) => b.changePct - a.changePct);
+  else if (sortKey === "change_asc") rows.sort((a, b) => a.changePct - b.changePct);
 
   return (
     <div className="space-y-6">
@@ -67,16 +84,40 @@ export default async function MarketPage({
           <input type="checkbox" name="shariah" value="1" defaultChecked={shariah === "1"} />
           Shariah-compliant only
         </label>
+        <select
+          name="sort"
+          defaultValue={sortKey}
+          className="bg-zinc-900 text-zinc-100 rounded border border-zinc-700 px-3 py-2 text-sm"
+        >
+          {Object.entries(SORTS).map(([key, { label }]) => (
+            <option key={key} value={key}>{label}</option>
+          ))}
+        </select>
         <button type="submit" className="rounded bg-emerald-600 text-white px-4 py-2 text-sm hover:bg-emerald-500">
           Search
         </button>
-        {(q || shariah === "1" || sector) && (
+        {(q || shariah === "1" || sector || sortKey !== "ticker") && (
           <Link href="/market" className="text-sm text-zinc-400 hover:text-zinc-200">Clear filters</Link>
         )}
       </form>
 
+      <div className="flex gap-2 text-sm">
+        <Link
+          href={{ pathname: "/market", query: { ...(q ? { q } : {}), ...(shariah === "1" ? { shariah } : {}), ...(sector ? { sector } : {}), sort: "change_desc" } }}
+          className={`px-3 py-1.5 rounded-full ${sortKey === "change_desc" ? "bg-emerald-600 text-white" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"}`}
+        >
+          Top gainers
+        </Link>
+        <Link
+          href={{ pathname: "/market", query: { ...(q ? { q } : {}), ...(shariah === "1" ? { shariah } : {}), ...(sector ? { sector } : {}), sort: "change_asc" } }}
+          className={`px-3 py-1.5 rounded-full ${sortKey === "change_asc" ? "bg-emerald-600 text-white" : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"}`}
+        >
+          Top losers
+        </Link>
+      </div>
+
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
-        {stocks.length === 0 ? (
+        {rows.length === 0 ? (
           <p className="p-4 text-sm text-zinc-400">No matching stocks found.</p>
         ) : (
           <table className="w-full text-sm">
@@ -91,10 +132,7 @@ export default async function MarketPage({
               </tr>
             </thead>
             <tbody>
-              {stocks.map((s) => {
-                const price = currentPriceHalalas(s.ticker, s.previousCloseHalalas, now, s.lastRealPriceHalalas, s.lastRealPriceAt);
-                const changePct = (Number(price - s.previousCloseHalalas) / Number(s.previousCloseHalalas)) * 100;
-                const isReal = hasFreshRealPrice(s.lastRealPriceAt, now);
+              {rows.map(({ stock: s, price, changePct, isReal }) => {
                 return (
                   <tr key={s.id} className="border-b border-zinc-800 hover:bg-zinc-800/60">
                     <td className="py-2 px-4">
