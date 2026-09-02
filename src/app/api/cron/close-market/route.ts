@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { currentPriceHalalas, isTradingDay, riyadhDateString } from "@/lib/market";
+import { isTradingDay, riyadhDateString } from "@/lib/market";
+import { fetchTadawulQuote } from "@/lib/tadawulData";
 
 /**
  * Runs once daily shortly after Tadawul close (see vercel.json cron schedule).
- * Snapshots each stock's synthetic "live" price into previousCloseHalalas, so
- * the next trading day's +/-10% band and %-change anchor to a real rolling
- * close instead of the original seed value forever.
+ * Fetches each stock's REAL closing price and current quote from Tadawul
+ * (via Yahoo Finance, see src/lib/tadawulData.ts) and caches them on the
+ * Stock row. A ticker whose fetch fails is left untouched (its last known
+ * real price stays in place) rather than overwritten with a guess.
  */
 export async function GET(req: NextRequest) {
   const auth = req.headers.get("authorization");
@@ -31,14 +33,28 @@ export async function GET(req: NextRequest) {
 
   const stocks = await db.stock.findMany();
   const updates: { ticker: string; from: number; to: number }[] = [];
+  const failed: string[] = [];
 
   for (const stock of stocks) {
-    const closePrice = currentPriceHalalas(stock.ticker, stock.previousCloseHalalas, now);
-    await db.stock.update({ where: { id: stock.id }, data: { previousCloseHalalas: closePrice } });
-    updates.push({ ticker: stock.ticker, from: Number(stock.previousCloseHalalas) / 100, to: Number(closePrice) / 100 });
+    const quote = await fetchTadawulQuote(stock.ticker, "5d");
+    if (!quote) {
+      failed.push(stock.ticker);
+      continue;
+    }
+    await db.stock.update({
+      where: { id: stock.id },
+      data: {
+        previousCloseHalalas: quote.previousCloseHalalas,
+        lastRealPriceHalalas: quote.currentPriceHalalas,
+        lastRealPriceAt: quote.asOf,
+        ...(quote.week52LowHalalas != null ? { week52LowHalalas: quote.week52LowHalalas } : {}),
+        ...(quote.week52HighHalalas != null ? { week52HighHalalas: quote.week52HighHalalas } : {}),
+      },
+    });
+    updates.push({ ticker: stock.ticker, from: Number(stock.previousCloseHalalas) / 100, to: Number(quote.previousCloseHalalas) / 100 });
   }
 
   await db.appConfig.update({ where: { id: "singleton" }, data: { lastCloseRolloverDate: today } });
 
-  return NextResponse.json({ ok: true, date: today, updated: updates.length, updates });
+  return NextResponse.json({ ok: true, date: today, updated: updates.length, updates, failed });
 }

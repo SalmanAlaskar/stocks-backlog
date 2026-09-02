@@ -11,7 +11,7 @@ export async function evaluatePriceAlerts(userId: string) {
 
   const now = new Date();
   for (const alert of alerts) {
-    const price = currentPriceHalalas(alert.stock.ticker, alert.stock.previousCloseHalalas, now);
+    const price = currentPriceHalalas(alert.stock.ticker, alert.stock.previousCloseHalalas, now, alert.stock.lastRealPriceHalalas, alert.stock.lastRealPriceAt);
     const crossed = alert.direction === "ABOVE" ? price >= alert.targetHalalas : price <= alert.targetHalalas;
     if (!crossed) continue;
 

@@ -46,7 +46,7 @@ export async function getHoldings(userId: string): Promise<Holding[]> {
   const holdings: Holding[] = [];
   for (const entry of map.values()) {
     if (entry.qty <= 0) continue;
-    const price = currentPriceHalalas(entry.stock.ticker, entry.stock.previousCloseHalalas, now);
+    const price = currentPriceHalalas(entry.stock.ticker, entry.stock.previousCloseHalalas, now, entry.stock.lastRealPriceHalalas, entry.stock.lastRealPriceAt);
     const costBasis = BigInt(Math.round(entry.avgCost * entry.qty));
     const marketValue = price * BigInt(entry.qty);
     holdings.push({

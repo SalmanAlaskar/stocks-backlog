@@ -86,7 +86,7 @@ export async function placeOrder(input: PlaceOrderInput) {
   }
 
   if (type === "MARKET") {
-    const fillPrice = currentPriceHalalas(stock.ticker, stock.previousCloseHalalas, now);
+    const fillPrice = currentPriceHalalas(stock.ticker, stock.previousCloseHalalas, now, stock.lastRealPriceHalalas, stock.lastRealPriceAt);
     return executeFill({ userId, stockId, side, type, quantity, validity, fillPrice, now });
   }
 
@@ -215,7 +215,7 @@ export async function evaluateOrder(orderId: string) {
     return;
   }
 
-  const price = currentPriceHalalas(order.stock.ticker, order.stock.previousCloseHalalas, now);
+  const price = currentPriceHalalas(order.stock.ticker, order.stock.previousCloseHalalas, now, order.stock.lastRealPriceHalalas, order.stock.lastRealPriceAt);
   let shouldFill = false;
 
   if (order.type === "LIMIT" && order.limitPriceHalalas) {

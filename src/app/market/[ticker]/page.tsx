@@ -2,9 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireVerifiedUser } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { currentPriceHalalas, dailyHistory } from "@/lib/market";
+import { currentPriceHalalas, dailyHistory, riyadhDateString, type Candle } from "@/lib/market";
+import { fetchTadawulQuote } from "@/lib/tadawulData";
 import { formatSar, formatPercent } from "@/lib/money";
 import Sparkline from "@/components/Sparkline";
+import DataSourceNote from "@/components/DataSourceNote";
 import { addToWatchlistAction } from "@/app/watchlists/actions";
 import { createPriceAlertAction, deletePriceAlertAction } from "@/app/alerts/actions";
 import { summarizeNews } from "@/lib/ai";
@@ -28,10 +30,38 @@ export default async function StockDetailPage({
   if (!stock) notFound();
 
   const now = new Date();
-  const price = currentPriceHalalas(stock.ticker, stock.previousCloseHalalas, now);
-  const changePct = (Number(price - stock.previousCloseHalalas) / Number(stock.previousCloseHalalas)) * 100;
-  const candles = dailyHistory(stock.ticker, stock.previousCloseHalalas, RANGES[rangeKey], now);
-  const indicatorCandles = dailyHistory(stock.ticker, stock.previousCloseHalalas, 60, now);
+  const quote = await fetchTadawulQuote(stock.ticker, "5y");
+
+  let price: bigint;
+  let previousClose: bigint;
+  let allCandles: Candle[];
+  const isRealPrice = quote != null;
+
+  if (quote) {
+    price = quote.currentPriceHalalas;
+    previousClose = quote.previousCloseHalalas;
+    const lastIsToday = quote.candles.at(-1) != null && riyadhDateString(new Date(quote.candles.at(-1)!.t)) === riyadhDateString(now);
+    allCandles = [...(lastIsToday ? quote.candles.slice(0, -1) : quote.candles), { t: now.getTime(), priceHalalas: quote.currentPriceHalalas }];
+    // Opportunistically refresh the shared cache so other pages (list, portfolio, trade) benefit too.
+    await db.stock.update({
+      where: { id: stock.id },
+      data: {
+        previousCloseHalalas: quote.previousCloseHalalas,
+        lastRealPriceHalalas: quote.currentPriceHalalas,
+        lastRealPriceAt: quote.asOf,
+        ...(quote.week52LowHalalas != null ? { week52LowHalalas: quote.week52LowHalalas } : {}),
+        ...(quote.week52HighHalalas != null ? { week52HighHalalas: quote.week52HighHalalas } : {}),
+      },
+    });
+  } else {
+    price = currentPriceHalalas(stock.ticker, stock.previousCloseHalalas, now, stock.lastRealPriceHalalas, stock.lastRealPriceAt);
+    previousClose = stock.previousCloseHalalas;
+    allCandles = dailyHistory(stock.ticker, stock.previousCloseHalalas, Math.max(60, RANGES[rangeKey]), now);
+  }
+
+  const changePct = (Number(price - previousClose) / Number(previousClose)) * 100;
+  const candles = allCandles.slice(-RANGES[rangeKey]);
+  const indicatorCandles = allCandles.slice(-60);
   const indicators = computeIndicators(indicatorCandles);
   const watchlists = await db.watchlist.findMany({ where: { userId: user.id } });
   const alerts = await db.priceAlert.findMany({ where: { userId: user.id, stockId: stock.id }, orderBy: { createdAt: "desc" } });
@@ -48,6 +78,7 @@ export default async function StockDetailPage({
         <div className="text-right">
           <div className="text-2xl font-semibold">{formatSar(price)}</div>
           <div className={changePct >= 0 ? "text-emerald-400" : "text-red-400"}>{formatPercent(changePct)} today</div>
+          <div className="mt-1"><DataSourceNote isReal={isRealPrice} /></div>
         </div>
       </div>
 

@@ -45,7 +45,7 @@ export default async function WatchlistsPage() {
             <table className="w-full text-sm">
               <tbody>
                 {wl.items.map((item) => {
-                  const price = currentPriceHalalas(item.stock.ticker, item.stock.previousCloseHalalas, now);
+                  const price = currentPriceHalalas(item.stock.ticker, item.stock.previousCloseHalalas, now, item.stock.lastRealPriceHalalas, item.stock.lastRealPriceAt);
                   const changePct = (Number(price - item.stock.previousCloseHalalas) / Number(item.stock.previousCloseHalalas)) * 100;
                   return (
                     <tr key={item.id} className="border-b border-zinc-800 last:border-0">

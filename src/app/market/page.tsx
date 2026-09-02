@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { requireVerifiedUser } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { currentPriceHalalas } from "@/lib/market";
+import { currentPriceHalalas, hasFreshRealPrice } from "@/lib/market";
 import { formatSar, formatPercent } from "@/lib/money";
+import DataSourceNote from "@/components/DataSourceNote";
 
 export default async function MarketPage({
   searchParams,
@@ -37,6 +38,7 @@ export default async function MarketPage({
       <div>
         <h1 className="text-xl font-semibold">TASI Market</h1>
         <p className="text-sm text-zinc-400">Search Tadawul-listed stocks by ticker or company name.</p>
+        <div className="mt-2"><DataSourceNote isReal={true} /></div>
       </div>
 
       <form className="flex flex-wrap items-center gap-3" method="get">
@@ -73,8 +75,9 @@ export default async function MarketPage({
             </thead>
             <tbody>
               {stocks.map((s) => {
-                const price = currentPriceHalalas(s.ticker, s.previousCloseHalalas, now);
+                const price = currentPriceHalalas(s.ticker, s.previousCloseHalalas, now, s.lastRealPriceHalalas, s.lastRealPriceAt);
                 const changePct = (Number(price - s.previousCloseHalalas) / Number(s.previousCloseHalalas)) * 100;
+                const isReal = hasFreshRealPrice(s.lastRealPriceAt, now);
                 return (
                   <tr key={s.id} className="border-b border-zinc-800 hover:bg-zinc-800/60">
                     <td className="py-2 px-4">
@@ -92,7 +95,10 @@ export default async function MarketPage({
                         <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400">Non-compliant</span>
                       )}
                     </td>
-                    <td className="py-2 px-4 text-right">{formatSar(price)}</td>
+                    <td className="py-2 px-4 text-right">
+                      {formatSar(price)}
+                      {!isReal && <div className="text-[10px] text-amber-500">simulated</div>}
+                    </td>
                     <td className={`py-2 px-4 text-right ${changePct >= 0 ? "text-emerald-400" : "text-red-400"}`}>
                       {formatPercent(changePct)}
                     </td>

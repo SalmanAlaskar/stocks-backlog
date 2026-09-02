@@ -72,13 +72,28 @@ function hashString(s: string): number {
   return (h >>> 0) / 4294967295;
 }
 
+const REAL_PRICE_MAX_AGE_MS = 48 * 60 * 60 * 1000;
+
 /**
- * Deterministic synthetic "live" price: same ticker + same minute always
- * produces the same price, so concurrent requests within a minute agree,
- * and it drifts smoothly minute-to-minute without a real market feed.
- * Bounded to Tadawul's +-10% daily fluctuation limit.
+ * Current display price for a stock. Prefers real Tadawul-sourced data
+ * (synced by the daily cron and by stock-detail-page views, see
+ * `src/lib/tadawulData.ts`) whenever a sync has happened recently. Only
+ * falls back to a synthetic simulated price if no real sync exists yet or
+ * the real-data source has been unreachable for 48h+, so the app is never
+ * left with a blank price.
  */
-export function currentPriceHalalas(ticker: string, previousCloseHalalas: bigint, now: Date): bigint {
+export function currentPriceHalalas(
+  ticker: string,
+  previousCloseHalalas: bigint,
+  now: Date,
+  lastRealPriceHalalas?: bigint | null,
+  lastRealPriceAt?: Date | null,
+): bigint {
+  if (lastRealPriceHalalas != null && lastRealPriceAt != null) {
+    if (now.getTime() - lastRealPriceAt.getTime() < REAL_PRICE_MAX_AGE_MS) {
+      return lastRealPriceHalalas;
+    }
+  }
   const minuteBucket = Math.floor(now.getTime() / 60000);
   const seedA = hashString(`${ticker}:${minuteBucket}`);
   const seedB = hashString(`${ticker}:${minuteBucket}:trend`);
@@ -88,6 +103,11 @@ export function currentPriceHalalas(ticker: string, previousCloseHalalas: bigint
   const { lower, upper } = priceLimits(previousCloseHalalas);
   const clamped = Math.min(Number(upper), Math.max(Number(lower), raw));
   return BigInt(clamped);
+}
+
+/** True if `currentPriceHalalas` would return real (not synthetic) data for these inputs. */
+export function hasFreshRealPrice(lastRealPriceAt: Date | null | undefined, now: Date): boolean {
+  return lastRealPriceAt != null && now.getTime() - lastRealPriceAt.getTime() < REAL_PRICE_MAX_AGE_MS;
 }
 
 export interface Candle {

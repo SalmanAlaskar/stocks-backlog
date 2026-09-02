@@ -182,6 +182,8 @@ model Stock {
   dividendYieldBps     Int?
   week52LowHalalas     BigInt?
   week52HighHalalas    BigInt?
+  lastRealPriceHalalas BigInt?
+  lastRealPriceAt      DateTime?
 
   watchlistItems WatchlistItem[]
   orders         Order[]
