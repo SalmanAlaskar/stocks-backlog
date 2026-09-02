@@ -12,8 +12,8 @@ export default function TwoFactorSettings({ enabled, pendingCode }: { enabled: b
   if (state?.backupCodes) {
     return (
       <div className="space-y-3">
-        <p className="text-sm text-emerald-700">2FA enabled. Save these backup codes — each can be used once if you lose access to your phone.</p>
-        <div className="grid grid-cols-2 gap-2 font-mono text-sm bg-zinc-50 border border-zinc-200 rounded p-3">
+        <p className="text-sm text-emerald-400">2FA enabled. Save these backup codes — each can be used once if you lose access to your phone.</p>
+        <div className="grid grid-cols-2 gap-2 font-mono text-sm bg-zinc-800/60 border border-zinc-800 rounded p-3">
           {state.backupCodes.map((c) => (
             <span key={c}>{c}</span>
           ))}
@@ -25,11 +25,11 @@ export default function TwoFactorSettings({ enabled, pendingCode }: { enabled: b
   if (enabled) {
     return (
       <div>
-        <p className="text-sm text-emerald-700 mb-3">Two-factor authentication is enabled.</p>
+        <p className="text-sm text-emerald-400 mb-3">Two-factor authentication is enabled.</p>
         <button
           onClick={() => disableTransition(() => disable2FAAction())}
           disabled={disablePending}
-          className="rounded border border-zinc-300 px-3 py-1.5 text-sm hover:bg-zinc-100 disabled:opacity-50"
+          className="rounded border border-zinc-700 px-3 py-1.5 text-sm hover:bg-zinc-800 disabled:opacity-50"
         >
           {disablePending ? "Disabling..." : "Disable 2FA"}
         </button>
@@ -42,7 +42,7 @@ export default function TwoFactorSettings({ enabled, pendingCode }: { enabled: b
       <button
         onClick={() => startTransition(async () => { await startEnable2FAAction(); setStarted(true); })}
         disabled={startPending}
-        className="rounded bg-emerald-700 text-white px-3 py-1.5 text-sm hover:bg-emerald-800 disabled:opacity-50"
+        className="rounded bg-emerald-600 text-white px-3 py-1.5 text-sm hover:bg-emerald-500 disabled:opacity-50"
       >
         {startPending ? "Sending code..." : "Enable 2FA"}
       </button>
@@ -51,13 +51,13 @@ export default function TwoFactorSettings({ enabled, pendingCode }: { enabled: b
 
   return (
     <form action={formAction} className="space-y-3">
-      <div className="rounded border border-dashed border-zinc-300 bg-zinc-50 p-3 text-xs text-zinc-500">
+      <div className="rounded border border-dashed border-zinc-700 bg-zinc-800/60 p-3 text-xs text-zinc-400">
         Demo mode: real SMS delivery requires a telecom integration. Your code is{" "}
-        <span className="font-mono font-semibold text-zinc-800">{pendingCode}</span>.
+        <span className="font-mono font-semibold text-zinc-100">{pendingCode}</span>.
       </div>
-      <input name="code" required placeholder="6-digit code" className="w-full rounded border border-zinc-300 px-3 py-2 text-sm tracking-widest" />
-      {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
-      <button type="submit" disabled={pending} className="rounded bg-emerald-700 text-white px-3 py-1.5 text-sm hover:bg-emerald-800 disabled:opacity-50">
+      <input name="code" required placeholder="6-digit code" className="bg-zinc-900 text-zinc-100 placeholder:text-zinc-400 w-full rounded border border-zinc-700 px-3 py-2 text-sm tracking-widest" />
+      {state?.error && <p className="text-sm text-red-400">{state.error}</p>}
+      <button type="submit" disabled={pending} className="rounded bg-emerald-600 text-white px-3 py-1.5 text-sm hover:bg-emerald-500 disabled:opacity-50">
         {pending ? "Confirming..." : "Confirm & enable"}
       </button>
     </form>

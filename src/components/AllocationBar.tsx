@@ -2,18 +2,18 @@ import { formatSar } from "@/lib/money";
 import type { AccountBucket } from "@/lib/netWorth";
 
 // Categorical slots 1-4 from the validated reference palette (blue/orange/aqua/yellow),
-// order fixed — never reassigned per render.
+// dark-mode steps (validated against our zinc-900 card surface) — order fixed, never reassigned.
 const COLORS: Record<AccountBucket["key"], string> = {
-  wallet: "#2a78d6",
-  stocks: "#eb6834",
-  abian: "#1baf7a",
-  alrajhi: "#eda100",
+  wallet: "#3987e5",
+  stocks: "#d95926",
+  abian: "#199e70",
+  alrajhi: "#c98500",
 };
 
 export default function AllocationBar({ buckets, totalHalalas }: { buckets: AccountBucket[]; totalHalalas: bigint }) {
   const visible = buckets.filter((b) => b.valueHalalas > 0n);
   if (visible.length === 0 || totalHalalas === 0n) {
-    return <p className="text-sm text-zinc-500">No assets to show an allocation for yet.</p>;
+    return <p className="text-sm text-zinc-400">No assets to show an allocation for yet.</p>;
   }
 
   return (
@@ -44,9 +44,9 @@ export default function AllocationBar({ buckets, totalHalalas }: { buckets: Acco
           return (
             <li key={b.key} className="flex items-center gap-1.5">
               <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[b.key] }} />
-              <span className="text-zinc-600">{b.label}</span>
-              <span className="text-zinc-900 font-medium">{formatSar(b.valueHalalas)}</span>
-              <span className="text-zinc-400">({pct.toFixed(1)}%)</span>
+              <span className="text-zinc-300">{b.label}</span>
+              <span className="text-zinc-50 font-medium">{formatSar(b.valueHalalas)}</span>
+              <span className="text-zinc-500">({pct.toFixed(1)}%)</span>
             </li>
           );
         })}

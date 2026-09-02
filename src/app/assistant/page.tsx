@@ -12,7 +12,7 @@ export default function AssistantPage() {
     <div className="max-w-lg mx-auto space-y-4">
       <div>
         <h1 className="text-xl font-semibold">Portfolio assistant</h1>
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-zinc-400">
           A simple rule-based Q&amp;A over your own data — not a live AI model call, and it won&apos;t give
           personalized financial advice.
         </p>
@@ -23,22 +23,22 @@ export default function AssistantPage() {
           name="question"
           placeholder="Ask about your portfolio..."
           required
-          className="flex-1 rounded border border-zinc-300 px-3 py-2 text-sm"
+          className="bg-zinc-900 text-zinc-100 placeholder:text-zinc-400 flex-1 rounded border border-zinc-700 px-3 py-2 text-sm"
         />
-        <button type="submit" disabled={pending} className="rounded bg-emerald-700 text-white px-4 py-2 text-sm hover:bg-emerald-800 disabled:opacity-50">
+        <button type="submit" disabled={pending} className="rounded bg-emerald-600 text-white px-4 py-2 text-sm hover:bg-emerald-500 disabled:opacity-50">
           {pending ? "..." : "Ask"}
         </button>
       </form>
 
       <div className="flex flex-wrap gap-2">
         {EXAMPLES.map((ex) => (
-          <span key={ex} className="text-xs px-2 py-1 rounded-full bg-zinc-100 text-zinc-500">{ex}</span>
+          <span key={ex} className="text-xs px-2 py-1 rounded-full bg-zinc-800 text-zinc-400">{ex}</span>
         ))}
       </div>
 
       {state.answer && (
-        <div className="bg-white border border-zinc-200 rounded-lg p-4 space-y-2">
-          {state.question && <p className="text-sm text-zinc-500">You asked: &quot;{state.question}&quot;</p>}
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-2">
+          {state.question && <p className="text-sm text-zinc-400">You asked: &quot;{state.question}&quot;</p>}
           <p className="text-sm">{state.answer}</p>
         </div>
       )}

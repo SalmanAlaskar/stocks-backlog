@@ -18,29 +18,29 @@ export default async function WatchlistsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold">Watchlists</h1>
-        <p className="text-sm text-zinc-500">Track TASI stocks you&apos;re interested in.</p>
+        <p className="text-sm text-zinc-400">Track TASI stocks you&apos;re interested in.</p>
       </div>
 
       <form action={createWatchlistAction} className="flex gap-3">
-        <input name="name" placeholder="New watchlist name" required className="flex-1 rounded border border-zinc-300 px-3 py-2 text-sm" />
-        <button type="submit" className="rounded bg-emerald-700 text-white px-4 py-2 text-sm hover:bg-emerald-800">Create</button>
+        <input name="name" placeholder="New watchlist name" required className="bg-zinc-900 text-zinc-100 placeholder:text-zinc-400 flex-1 rounded border border-zinc-700 px-3 py-2 text-sm" />
+        <button type="submit" className="rounded bg-emerald-600 text-white px-4 py-2 text-sm hover:bg-emerald-500">Create</button>
       </form>
 
       {watchlists.length === 0 && (
-        <p className="text-sm text-zinc-500">No watchlists yet. Create one above, or add stocks from the <Link href="/market" className="text-emerald-700">market page</Link>.</p>
+        <p className="text-sm text-zinc-400">No watchlists yet. Create one above, or add stocks from the <Link href="/market" className="text-emerald-400">market page</Link>.</p>
       )}
 
       {watchlists.map((wl) => (
-        <div key={wl.id} className="bg-white border border-zinc-200 rounded-lg p-4">
+        <div key={wl.id} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-medium">{wl.name}</h2>
             <form action={deleteWatchlistAction}>
               <input type="hidden" name="id" value={wl.id} />
-              <button type="submit" className="text-xs text-red-600 hover:underline">Delete watchlist</button>
+              <button type="submit" className="text-xs text-red-400 hover:underline">Delete watchlist</button>
             </form>
           </div>
           {wl.items.length === 0 ? (
-            <p className="text-sm text-zinc-500">No stocks added yet.</p>
+            <p className="text-sm text-zinc-400">No stocks added yet.</p>
           ) : (
             <table className="w-full text-sm">
               <tbody>
@@ -48,17 +48,17 @@ export default async function WatchlistsPage() {
                   const price = currentPriceHalalas(item.stock.ticker, item.stock.previousCloseHalalas, now);
                   const changePct = (Number(price - item.stock.previousCloseHalalas) / Number(item.stock.previousCloseHalalas)) * 100;
                   return (
-                    <tr key={item.id} className="border-b border-zinc-50 last:border-0">
+                    <tr key={item.id} className="border-b border-zinc-800 last:border-0">
                       <td className="py-2">
-                        <Link href={`/market/${item.stock.ticker}`} className="font-medium text-emerald-700">{item.stock.ticker}</Link>
-                        <span className="text-zinc-500 ml-2">{item.stock.nameEn}</span>
+                        <Link href={`/market/${item.stock.ticker}`} className="font-medium text-emerald-400">{item.stock.ticker}</Link>
+                        <span className="text-zinc-400 ml-2">{item.stock.nameEn}</span>
                       </td>
                       <td className="py-2 text-right">{formatSar(price)}</td>
-                      <td className={`py-2 text-right ${changePct >= 0 ? "text-emerald-700" : "text-red-600"}`}>{formatPercent(changePct)}</td>
+                      <td className={`py-2 text-right ${changePct >= 0 ? "text-emerald-400" : "text-red-400"}`}>{formatPercent(changePct)}</td>
                       <td className="py-2 text-right">
                         <form action={removeFromWatchlistAction}>
                           <input type="hidden" name="itemId" value={item.id} />
-                          <button type="submit" className="text-xs text-zinc-500 hover:text-red-600">Remove</button>
+                          <button type="submit" className="text-xs text-zinc-400 hover:text-red-400">Remove</button>
                         </form>
                       </td>
                     </tr>

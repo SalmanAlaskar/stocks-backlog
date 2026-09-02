@@ -35,7 +35,7 @@ export default async function TradePage({
     <div className="max-w-lg mx-auto space-y-4">
       <div>
         <h1 className="text-xl font-semibold">Trade {stock.ticker} &middot; {stock.nameEn}</h1>
-        <p className="text-sm text-zinc-500">Current price: {halalasToSar(price).toFixed(2)} SAR</p>
+        <p className="text-sm text-zinc-400">Current price: {halalasToSar(price).toFixed(2)} SAR</p>
       </div>
       <TradeForm
         ticker={stock.ticker}

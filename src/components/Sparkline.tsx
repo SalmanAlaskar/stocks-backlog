@@ -25,7 +25,7 @@ export default function Sparkline({ candles, width = 640, height = 220 }: { cand
 
   const points = candles.map((c, i) => `${xFor(i).toFixed(1)},${yFor(Number(c.priceHalalas)).toFixed(1)}`);
   const up = prices[lastIndex] >= prices[0];
-  const lineColor = up ? "#047857" : "#dc2626";
+  const lineColor = up ? "#10b981" : "#f87171";
 
   const yTicks = [max, (max + min) / 2, min];
   const xTickIndices = candles.length > 2 ? [0, Math.floor(lastIndex / 2), lastIndex] : [0, lastIndex];
@@ -39,8 +39,8 @@ export default function Sparkline({ candles, width = 640, height = 220 }: { cand
         const y = yFor(price);
         return (
           <g key={i}>
-            <line x1={marginLeft} y1={y} x2={width - marginRight} y2={y} stroke="#e5e7eb" strokeWidth={1} />
-            <text x={marginLeft - 8} y={y} textAnchor="end" dominantBaseline="middle" fontSize={11} fill="#9ca3af">
+            <line x1={marginLeft} y1={y} x2={width - marginRight} y2={y} stroke="#3f3f46" strokeWidth={1} />
+            <text x={marginLeft - 8} y={y} textAnchor="end" dominantBaseline="middle" fontSize={11} fill="#a1a1aa">
               {(price / 100).toFixed(2)}
             </text>
           </g>
@@ -55,17 +55,17 @@ export default function Sparkline({ candles, width = 640, height = 220 }: { cand
           textAnchor={idx === lastIndex ? "end" : idx === 0 ? "start" : "middle"}
           fontSize={11}
           fontWeight={idx === lastIndex ? 600 : 400}
-          fill={idx === lastIndex ? lineColor : "#9ca3af"}
+          fill={idx === lastIndex ? lineColor : "#a1a1aa"}
         >
           {idx === lastIndex ? "Today" : formatAxisDate(candles[idx].t)}
         </text>
       ))}
 
-      <line x1={lastX} y1={marginTop} x2={lastX} y2={marginTop + plotHeight} stroke="#9ca3af" strokeWidth={1} strokeDasharray="3 3" />
+      <line x1={lastX} y1={marginTop} x2={lastX} y2={marginTop + plotHeight} stroke="#52525b" strokeWidth={1} strokeDasharray="3 3" />
 
       <polyline points={points.join(" ")} fill="none" stroke={lineColor} strokeWidth={2} />
 
-      <circle cx={lastX} cy={lastY} r={5} fill="white" stroke={lineColor} strokeWidth={2} />
+      <circle cx={lastX} cy={lastY} r={5} fill="#18181b" stroke={lineColor} strokeWidth={2} />
       <circle cx={lastX} cy={lastY} r={2} fill={lineColor} />
     </svg>
   );

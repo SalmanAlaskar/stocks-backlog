@@ -5,12 +5,12 @@ import { formatSar } from "@/lib/money";
 import { cancelOrderAction } from "./actions";
 
 const STATUS_STYLES: Record<string, string> = {
-  PENDING: "bg-amber-100 text-amber-700",
-  FILLED: "bg-emerald-100 text-emerald-700",
-  PARTIALLY_FILLED: "bg-amber-100 text-amber-700",
-  CANCELLED: "bg-zinc-100 text-zinc-500",
-  REJECTED: "bg-red-100 text-red-700",
-  EXPIRED: "bg-zinc-100 text-zinc-500",
+  PENDING: "bg-amber-500/10 text-amber-400",
+  FILLED: "bg-emerald-500/10 text-emerald-400",
+  PARTIALLY_FILLED: "bg-amber-500/10 text-amber-400",
+  CANCELLED: "bg-zinc-800 text-zinc-400",
+  REJECTED: "bg-red-500/10 text-red-400",
+  EXPIRED: "bg-zinc-800 text-zinc-400",
 };
 
 export default async function OrdersPage() {
@@ -27,16 +27,16 @@ export default async function OrdersPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold">Order history</h1>
-        <p className="text-sm text-zinc-500">Track pending, filled, and settled orders. Tadawul settles on T+2.</p>
+        <p className="text-sm text-zinc-400">Track pending, filled, and settled orders. Tadawul settles on T+2.</p>
       </div>
 
-      <div className="bg-white border border-zinc-200 rounded-lg overflow-x-auto">
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-x-auto">
         {orders.length === 0 ? (
-          <p className="p-4 text-sm text-zinc-500">No orders yet.</p>
+          <p className="p-4 text-sm text-zinc-400">No orders yet.</p>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-zinc-500 border-b border-zinc-100">
+              <tr className="text-left text-zinc-400 border-b border-zinc-800">
                 <th className="py-2 px-4 font-normal">Date</th>
                 <th className="py-2 px-4 font-normal">Stock</th>
                 <th className="py-2 px-4 font-normal">Side</th>
@@ -50,17 +50,17 @@ export default async function OrdersPage() {
             </thead>
             <tbody>
               {orders.map((o) => (
-                <tr key={o.id} className="border-b border-zinc-50">
-                  <td className="py-2 px-4 text-zinc-500">{o.createdAt.toLocaleString("en-US")}</td>
+                <tr key={o.id} className="border-b border-zinc-800">
+                  <td className="py-2 px-4 text-zinc-400">{o.createdAt.toLocaleString("en-US")}</td>
                   <td className="py-2 px-4">{o.stock.ticker}</td>
-                  <td className={`py-2 px-4 ${o.side === "BUY" ? "text-emerald-700" : "text-red-600"}`}>{o.side}</td>
+                  <td className={`py-2 px-4 ${o.side === "BUY" ? "text-emerald-400" : "text-red-400"}`}>{o.side}</td>
                   <td className="py-2 px-4">{o.type}</td>
                   <td className="py-2 px-4 text-right">{o.quantity}</td>
                   <td className="py-2 px-4 text-right">{o.fillPriceHalalas ? formatSar(o.fillPriceHalalas) : "-"}</td>
                   <td className="py-2 px-4">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_STYLES[o.status]}`}>{o.status.replace("_", " ")}</span>
                   </td>
-                  <td className="py-2 px-4 text-zinc-500">
+                  <td className="py-2 px-4 text-zinc-400">
                     {o.status === "FILLED" && o.settlementDate
                       ? `Settles ${o.settlementDate.toLocaleDateString("en-US")}`
                       : "-"}
@@ -69,7 +69,7 @@ export default async function OrdersPage() {
                     {o.status === "PENDING" && (
                       <form action={cancelOrderAction}>
                         <input type="hidden" name="orderId" value={o.id} />
-                        <button type="submit" className="text-xs text-red-600 hover:underline">Cancel</button>
+                        <button type="submit" className="text-xs text-red-400 hover:underline">Cancel</button>
                       </form>
                     )}
                   </td>

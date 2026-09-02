@@ -36,7 +36,7 @@ export default async function MarketPage({
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold">TASI Market</h1>
-        <p className="text-sm text-zinc-500">Search Tadawul-listed stocks by ticker or company name.</p>
+        <p className="text-sm text-zinc-400">Search Tadawul-listed stocks by ticker or company name.</p>
       </div>
 
       <form className="flex flex-wrap items-center gap-3" method="get">
@@ -45,24 +45,24 @@ export default async function MarketPage({
           name="q"
           defaultValue={q ?? ""}
           placeholder="Search ticker or company name..."
-          className="flex-1 min-w-[200px] rounded border border-zinc-300 px-3 py-2 text-sm"
+          className="bg-zinc-900 text-zinc-100 placeholder:text-zinc-400 flex-1 min-w-[200px] rounded border border-zinc-700 px-3 py-2 text-sm"
         />
-        <label className="flex items-center gap-2 text-sm text-zinc-600">
+        <label className="flex items-center gap-2 text-sm text-zinc-300">
           <input type="checkbox" name="shariah" value="1" defaultChecked={shariah === "1"} />
           Shariah-compliant only
         </label>
-        <button type="submit" className="rounded bg-emerald-700 text-white px-4 py-2 text-sm hover:bg-emerald-800">
+        <button type="submit" className="rounded bg-emerald-600 text-white px-4 py-2 text-sm hover:bg-emerald-500">
           Search
         </button>
       </form>
 
-      <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
         {stocks.length === 0 ? (
-          <p className="p-4 text-sm text-zinc-500">No matching stocks found.</p>
+          <p className="p-4 text-sm text-zinc-400">No matching stocks found.</p>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-zinc-500 border-b border-zinc-100">
+              <tr className="text-left text-zinc-400 border-b border-zinc-800">
                 <th className="py-2 px-4 font-normal">Ticker</th>
                 <th className="py-2 px-4 font-normal">Company</th>
                 <th className="py-2 px-4 font-normal">Sector</th>
@@ -76,24 +76,24 @@ export default async function MarketPage({
                 const price = currentPriceHalalas(s.ticker, s.previousCloseHalalas, now);
                 const changePct = (Number(price - s.previousCloseHalalas) / Number(s.previousCloseHalalas)) * 100;
                 return (
-                  <tr key={s.id} className="border-b border-zinc-50 hover:bg-zinc-50">
+                  <tr key={s.id} className="border-b border-zinc-800 hover:bg-zinc-800/60">
                     <td className="py-2 px-4">
-                      <Link href={`/market/${s.ticker}`} className="font-medium text-emerald-700">{s.ticker}</Link>
+                      <Link href={`/market/${s.ticker}`} className="font-medium text-emerald-400">{s.ticker}</Link>
                     </td>
                     <td className="py-2 px-4">
                       <div>{s.nameEn}</div>
-                      <div className="text-xs text-zinc-400" dir="rtl">{s.nameAr}</div>
+                      <div className="text-xs text-zinc-500" dir="rtl">{s.nameAr}</div>
                     </td>
-                    <td className="py-2 px-4 text-zinc-500">{s.sector}</td>
+                    <td className="py-2 px-4 text-zinc-400">{s.sector}</td>
                     <td className="py-2 px-4">
                       {s.shariahCompliant ? (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Compliant</span>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400">Compliant</span>
                       ) : (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-500">Non-compliant</span>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400">Non-compliant</span>
                       )}
                     </td>
                     <td className="py-2 px-4 text-right">{formatSar(price)}</td>
-                    <td className={`py-2 px-4 text-right ${changePct >= 0 ? "text-emerald-700" : "text-red-600"}`}>
+                    <td className={`py-2 px-4 text-right ${changePct >= 0 ? "text-emerald-400" : "text-red-400"}`}>
                       {formatPercent(changePct)}
                     </td>
                   </tr>
