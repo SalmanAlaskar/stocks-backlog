@@ -1,3 +1,5 @@
+import { riyadhDateString } from "@/lib/market";
+
 /**
  * Real Tadawul-listed price data, sourced from Yahoo Finance's public chart
  * endpoint using ".SR"-suffixed tickers. This is genuine market data (not
@@ -38,13 +40,23 @@ export async function fetchTadawulQuote(ticker: string, range: string = "1y"): P
       .filter((c: { t: number; close: number | null }): c is { t: number; close: number } => c.close != null)
       .map((c: { t: number; close: number }) => ({ t: c.t, priceHalalas: toHalalas(c.close) }));
 
-    const prevClose = meta.chartPreviousClose ?? meta.previousClose ?? candles.at(-2)?.priceHalalas;
-    if (prevClose == null) return null;
+    if (candles.length === 0) return null;
+
+    // meta.chartPreviousClose/previousClose are unreliable — empirically they
+    // vary with the requested `range` and often don't mean "yesterday's
+    // close" at all. The daily candle series itself is consistent regardless
+    // of range, so derive the previous close from it directly: the last
+    // candle if today's session hasn't posted a bar yet, otherwise the one
+    // before it.
+    const now = new Date();
+    const lastCandle = candles.at(-1)!;
+    const lastIsToday = riyadhDateString(new Date(lastCandle.t)) === riyadhDateString(now);
+    const previousCloseHalalas = lastIsToday ? (candles.at(-2)?.priceHalalas ?? lastCandle.priceHalalas) : lastCandle.priceHalalas;
 
     return {
       currentPriceHalalas: toHalalas(meta.regularMarketPrice),
-      previousCloseHalalas: typeof prevClose === "bigint" ? prevClose : toHalalas(prevClose),
-      asOf: new Date(),
+      previousCloseHalalas,
+      asOf: now,
       week52LowHalalas: meta.fiftyTwoWeekLow != null ? toHalalas(meta.fiftyTwoWeekLow) : undefined,
       week52HighHalalas: meta.fiftyTwoWeekHigh != null ? toHalalas(meta.fiftyTwoWeekHigh) : undefined,
       candles,
