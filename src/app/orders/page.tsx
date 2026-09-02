@@ -63,7 +63,7 @@ export default async function OrdersPage({
 
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-x-auto">
         {orders.length === 0 ? (
-          <p className="p-4 text-sm text-zinc-400">No orders yet.</p>
+          <p className="p-4 text-sm text-zinc-400">{status || side ? "No orders match these filters." : "No orders yet."}</p>
         ) : (
           <table className="w-full text-sm">
             <thead>

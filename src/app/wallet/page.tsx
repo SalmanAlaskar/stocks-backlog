@@ -76,7 +76,7 @@ export default async function WalletPage({
           </form>
         </div>
         {wallet.transactions.length === 0 ? (
-          <p className="text-sm text-zinc-400">No transactions yet.</p>
+          <p className="text-sm text-zinc-400">{typeFilter ? "No transactions match this filter." : "No transactions yet."}</p>
         ) : (
           <table className="w-full text-sm">
             <thead>
