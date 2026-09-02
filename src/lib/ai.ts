@@ -1,5 +1,6 @@
 import type { NewsItem, Stock } from "@/generated/prisma/client";
 import type { Holding } from "@/lib/portfolio";
+import type { AccountBucket } from "@/lib/netWorth";
 import { formatSar, formatPercent } from "@/lib/money";
 
 /**
@@ -52,6 +53,36 @@ export function analyzePortfolioRisk(holdings: Holding[]): RiskInsight[] {
 
   if (insights.length === 0) {
     insights.push({ severity: "info", message: "Your portfolio looks reasonably diversified across sectors and positions." });
+  }
+
+  return insights;
+}
+
+/** Cross-account insights across Wallet/Stocks/Abian/Al Rajhi — descriptive only, not advice. */
+export function analyzeNetWorth(buckets: AccountBucket[], totalAssetsHalalas: bigint): RiskInsight[] {
+  const insights: RiskInsight[] = [];
+  const activeBuckets = buckets.filter((b) => b.exists && b.valueHalalas > 0n);
+  if (totalAssetsHalalas === 0n) return insights;
+
+  for (const b of activeBuckets) {
+    const pct = (Number(b.valueHalalas) / Number(totalAssetsHalalas)) * 100;
+    if (pct >= 60 && b.key !== "wallet") {
+      insights.push({ severity: "warning", message: `${pct.toFixed(0)}% of your total assets sit in ${b.label}. Your overall net worth depends heavily on that one account.` });
+    }
+  }
+
+  const losingAccounts = activeBuckets.filter((b) => b.gainHalalas != null && b.gainHalalas < 0n);
+  if (losingAccounts.length >= 2) {
+    insights.push({ severity: "info", message: `${losingAccounts.length} of your ${activeBuckets.length} accounts are currently showing a loss (${losingAccounts.map((b) => b.label).join(", ")}).` });
+  }
+
+  const investedBuckets = activeBuckets.filter((b) => b.key !== "wallet");
+  if (investedBuckets.length >= 3) {
+    insights.push({ severity: "info", message: `Your investments are spread across ${investedBuckets.length} different account types (${investedBuckets.map((b) => b.label).join(", ")}), which diversifies which products your returns depend on.` });
+  }
+
+  if (insights.length === 0) {
+    insights.push({ severity: "info", message: "Your assets look reasonably distributed across your connected accounts." });
   }
 
   return insights;

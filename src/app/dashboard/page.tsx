@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { requireVerifiedUser } from "@/lib/auth";
-import { db } from "@/lib/db";
 import { formatSar, formatPercent } from "@/lib/money";
 import { getHoldings } from "@/lib/portfolio";
 import { getAppConfig } from "@/lib/config";
@@ -8,26 +7,26 @@ import { isMarketOpen } from "@/lib/market";
 import { evaluatePendingOrders } from "@/lib/orders";
 import { evaluatePriceAlerts } from "@/lib/alerts";
 import { computeGoalProgress, getNetDepositedHalalas } from "@/lib/goals";
+import { getNetWorthSummary } from "@/lib/netWorth";
+import { analyzeNetWorth } from "@/lib/ai";
+import AllocationBar from "@/components/AllocationBar";
 
 export default async function DashboardPage() {
   const user = await requireVerifiedUser();
   await evaluatePendingOrders(user.id);
   await evaluatePriceAlerts(user.id);
 
-  const [wallet, holdings, config, netDeposited] = await Promise.all([
-    db.wallet.findUniqueOrThrow({ where: { userId: user.id } }),
-    getHoldings(user.id),
+  const [config, netDeposited, summary, holdings] = await Promise.all([
     getAppConfig(),
     getNetDepositedHalalas(user.id),
+    getNetWorthSummary(user.id),
+    getHoldings(user.id),
   ]);
 
   const marketOpen = isMarketOpen(new Date(), config.forceMarketOpen);
-  const marketValue = holdings.reduce((s, h) => s + h.marketValueHalalas, 0n);
-  const costBasis = holdings.reduce((s, h) => s + h.costBasisHalalas, 0n);
-  const unrealized = marketValue - costBasis;
-  const unrealizedPct = costBasis > 0n ? (Number(unrealized) / Number(costBasis)) * 100 : 0;
-  const netWorth = wallet.balanceHalalas + marketValue;
-  const goal = computeGoalProgress({ netDepositedHalalas: netDeposited, netWorthHalalas: netWorth, now: new Date() });
+  const { totalAssetsHalalas, totalGainHalalas, buckets } = summary;
+  const goal = computeGoalProgress({ netDepositedHalalas: netDeposited, netWorthHalalas: totalAssetsHalalas, now: new Date() });
+  const insights = analyzeNetWorth(buckets, totalAssetsHalalas);
 
   return (
     <div className="space-y-6">
@@ -38,23 +37,61 @@ export default async function DashboardPage() {
         </span>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white border border-zinc-200 rounded-lg p-4">
-          <div className="text-xs text-zinc-500">Net worth</div>
-          <div className="text-2xl font-semibold">{formatSar(netWorth)}</div>
+      {/* Hero: total assets across every connected account */}
+      <div className="bg-white border border-zinc-200 rounded-lg p-5">
+        <div className="text-xs text-zinc-500">Total assets (all accounts)</div>
+        <div className="text-4xl font-semibold mt-1">{formatSar(totalAssetsHalalas)}</div>
+        <div className={`text-sm mt-1 ${totalGainHalalas < 0n ? "text-red-600" : "text-emerald-700"}`}>
+          {formatSar(totalGainHalalas)} combined gain/loss
         </div>
-        <div className="bg-white border border-zinc-200 rounded-lg p-4">
-          <div className="text-xs text-zinc-500">Wallet balance</div>
-          <div className="text-2xl font-semibold">{formatSar(wallet.balanceHalalas)}</div>
-          <Link href="/wallet" className="text-xs text-emerald-700">Manage wallet &rarr;</Link>
-        </div>
-        <div className="bg-white border border-zinc-200 rounded-lg p-4">
-          <div className="text-xs text-zinc-500">Unrealized gain/loss</div>
-          <div className={`text-2xl font-semibold ${unrealized < 0n ? "text-red-600" : "text-emerald-700"}`}>
-            {formatSar(unrealized)}
-          </div>
-          <div className="text-xs text-zinc-500">{formatPercent(unrealizedPct)}</div>
-        </div>
+        <p className="text-xs text-zinc-400 mt-2">
+          Combines Wallet cash, stock holdings (unrealized), Abian (current-period return), and Al Rajhi funds
+          (total gain since inception) — each account reports gain on a different basis, so the combined figure
+          is a sum of those, not one apples-to-apples number. See the breakdown below.
+        </p>
+      </div>
+
+      {/* Allocation across accounts */}
+      <div className="bg-white border border-zinc-200 rounded-lg p-4">
+        <h2 className="font-medium mb-3">Asset allocation</h2>
+        <AllocationBar buckets={buckets} totalHalalas={totalAssetsHalalas} />
+      </div>
+
+      {/* Per-account breakdown */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {buckets.map((b) => (
+          <Link key={b.key} href={b.href} className="block bg-white border border-zinc-200 rounded-lg p-4 hover:border-emerald-300">
+            <div className="text-xs text-zinc-500">{b.label}</div>
+            {b.exists || b.key === "wallet" ? (
+              <>
+                <div className="text-xl font-semibold mt-1">{formatSar(b.valueHalalas)}</div>
+                {b.gainHalalas != null ? (
+                  <div className={`text-xs mt-1 ${b.gainHalalas < 0n ? "text-red-600" : "text-emerald-700"}`}>
+                    {formatSar(b.gainHalalas)} · {b.gainLabel}
+                  </div>
+                ) : (
+                  <div className="text-xs text-zinc-400 mt-1">{b.gainLabel}</div>
+                )}
+              </>
+            ) : (
+              <div className="text-sm text-zinc-400 mt-1">Not set up yet &rarr;</div>
+            )}
+          </Link>
+        ))}
+      </div>
+
+      {/* Cross-account insights */}
+      <div className="bg-white border border-zinc-200 rounded-lg p-4">
+        <h2 className="font-medium mb-1">Cross-account insights</h2>
+        <p className="text-xs text-zinc-400 mb-3">Rule-based demo, not a live model call. Informational only — not financial advice.</p>
+        <ul className="space-y-2 text-sm">
+          {insights.map((insight, i) => (
+            <li key={i} className={`flex gap-2 ${insight.severity === "warning" ? "text-amber-700" : "text-zinc-600"}`}>
+              <span>{insight.severity === "warning" ? "!" : "i"}</span>
+              <span>{insight.message}</span>
+            </li>
+          ))}
+        </ul>
       </div>
 
       {goal && (
@@ -74,8 +111,9 @@ export default async function DashboardPage() {
             </span>
           </div>
           <p className="text-xs text-zinc-400 mb-3">
-            Informational only — arithmetic on your own deposits and portfolio value. Not a prediction or a
-            trading recommendation; nothing here suggests what to buy or sell.
+            Informational only — arithmetic on your total assets across all accounts vs. your net deposits into
+            your brokerage Wallet. Not a prediction or a trading recommendation; nothing here suggests what to
+            buy or sell.
           </p>
           <div className="flex items-baseline gap-2 mb-2">
             <span className={`text-2xl font-semibold ${goal.returnPct < 0 ? "text-red-600" : "text-emerald-700"}`}>
@@ -91,7 +129,7 @@ export default async function DashboardPage() {
           </div>
           <dl className="text-sm grid grid-cols-2 gap-2">
             <div><dt className="text-zinc-500 inline">Net capital deposited: </dt><dd className="inline">{formatSar(goal.netDepositedHalalas)}</dd></div>
-            <div><dt className="text-zinc-500 inline">Current net worth: </dt><dd className="inline">{formatSar(goal.netWorthHalalas)}</dd></div>
+            <div><dt className="text-zinc-500 inline">Current total assets: </dt><dd className="inline">{formatSar(goal.netWorthHalalas)}</dd></div>
             <div><dt className="text-zinc-500 inline">Trading days left in 2026: </dt><dd className="inline">{goal.remainingTradingDays}</dd></div>
             <div>
               <dt className="text-zinc-500 inline">Avg. daily growth still needed: </dt>
@@ -103,7 +141,7 @@ export default async function DashboardPage() {
 
       <div className="bg-white border border-zinc-200 rounded-lg p-4">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-medium">Holdings</h2>
+          <h2 className="font-medium">Stock holdings</h2>
           <Link href="/portfolio" className="text-xs text-emerald-700">View portfolio &rarr;</Link>
         </div>
         {holdings.length === 0 ? (
