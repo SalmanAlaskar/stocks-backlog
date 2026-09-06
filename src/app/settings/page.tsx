@@ -5,6 +5,7 @@ import { isMarketOpen } from "@/lib/market";
 import { db } from "@/lib/db";
 import { toggleForceMarketOpenAction, updateNotificationPrefsAction } from "./actions";
 import TwoFactorSettings from "@/components/TwoFactorSettings";
+import ChangePasswordForm from "@/components/ChangePasswordForm";
 
 export default async function SettingsPage() {
   const user = await requireVerifiedUser();
@@ -25,6 +26,12 @@ export default async function SettingsPage() {
         <h2 className="font-medium mb-1">Two-factor authentication</h2>
         <p className="text-sm text-zinc-400 mb-3">Require a code at login in addition to your password.</p>
         <TwoFactorSettings enabled={user.twoFactorEnabled} pendingCode={user.twoFactorSecret} />
+      </div>
+
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+        <h2 className="font-medium mb-1">Change password</h2>
+        <p className="text-sm text-zinc-400 mb-3">Update your login password.</p>
+        <ChangePasswordForm />
       </div>
 
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">

@@ -2,9 +2,34 @@
 
 import { revalidatePath } from "next/cache";
 import { randomBytes } from "crypto";
-import { requireVerifiedUser } from "@/lib/auth";
+import { requireVerifiedUser, hashPassword, verifyPassword } from "@/lib/auth";
 import { setForceMarketOpen } from "@/lib/config";
 import { db } from "@/lib/db";
+
+export type ChangePasswordState = { error?: string; success?: boolean } | undefined;
+
+export async function changePasswordAction(_prev: ChangePasswordState, formData: FormData): Promise<ChangePasswordState> {
+  const user = await requireVerifiedUser();
+  const currentPassword = String(formData.get("currentPassword") ?? "");
+  const newPassword = String(formData.get("newPassword") ?? "");
+  const confirmPassword = String(formData.get("confirmPassword") ?? "");
+
+  const fresh = await db.user.findUniqueOrThrow({ where: { id: user.id } });
+  if (!verifyPassword(currentPassword, fresh.passwordSalt, fresh.passwordHash)) {
+    return { error: "Current password is incorrect." };
+  }
+  if (newPassword.length < 8) {
+    return { error: "New password must be at least 8 characters." };
+  }
+  if (newPassword !== confirmPassword) {
+    return { error: "New password and confirmation don't match." };
+  }
+
+  const { hash, salt } = hashPassword(newPassword);
+  await db.user.update({ where: { id: user.id }, data: { passwordHash: hash, passwordSalt: salt } });
+  revalidatePath("/settings");
+  return { success: true };
+}
 
 export async function toggleForceMarketOpenAction(formData: FormData) {
   await requireVerifiedUser();

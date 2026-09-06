@@ -67,6 +67,9 @@ model User {
   twoFactorSecret      String?
   twoFactorBackupCodes String?
 
+  passwordResetCode      String?
+  passwordResetExpiresAt DateTime?
+
   shariahOnly Boolean @default(false)
 
   createdAt DateTime @default(now())
