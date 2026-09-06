@@ -3,8 +3,22 @@ import { requireVerifiedUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatSar, formatPercent } from "@/lib/money";
 
-export default async function AlRajhiPage() {
+const SORTS = {
+  name: { label: "Fund (A-Z)" },
+  value_desc: { label: "Market value (high-low)" },
+  gain_desc: { label: "Gain % (high-low)" },
+  gain_asc: { label: "Gain % (low-high)" },
+} as const;
+type SortKey = keyof typeof SORTS;
+
+export default async function AlRajhiPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ sort?: string }>;
+}) {
   const user = await requireVerifiedUser();
+  const { sort } = await searchParams;
+  const sortKey: SortKey = sort && sort in SORTS ? (sort as SortKey) : "name";
 
   const account = await db.rajhiFundAccount.findUnique({
     where: { userId: user.id },
@@ -29,6 +43,12 @@ export default async function AlRajhiPage() {
 
   const todayGainPct = account.todayGainBps / 100;
   const gainTotal = account.totalGainHalalas;
+
+  const holdings = [...account.holdings];
+  if (sortKey === "name") holdings.sort((a, b) => a.nameEn.localeCompare(b.nameEn));
+  else if (sortKey === "value_desc") holdings.sort((a, b) => (b.marketValueHalalas < a.marketValueHalalas ? -1 : b.marketValueHalalas > a.marketValueHalalas ? 1 : 0));
+  else if (sortKey === "gain_desc") holdings.sort((a, b) => b.gainBps - a.gainBps);
+  else if (sortKey === "gain_asc") holdings.sort((a, b) => a.gainBps - b.gainBps);
 
   return (
     <div className="space-y-6">
@@ -63,8 +83,16 @@ export default async function AlRajhiPage() {
       </div>
 
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-x-auto">
-        <div className="p-4 pb-0">
+        <div className="p-4 pb-0 flex items-center justify-between flex-wrap gap-3">
           <h2 className="font-medium">Fund holdings</h2>
+          <form className="flex items-center gap-2" method="get">
+            <select name="sort" defaultValue={sortKey} className="bg-zinc-900 text-zinc-100 rounded border border-zinc-700 px-2 py-1.5 text-sm">
+              {Object.entries(SORTS).map(([key, { label }]) => (
+                <option key={key} value={key}>{label}</option>
+              ))}
+            </select>
+            <button type="submit" className="rounded bg-emerald-600 text-white px-3 py-1.5 text-sm hover:bg-emerald-500">Sort</button>
+          </form>
         </div>
         <table className="w-full text-sm">
           <thead>
@@ -78,7 +106,7 @@ export default async function AlRajhiPage() {
             </tr>
           </thead>
           <tbody>
-            {account.holdings.map((h) => (
+            {holdings.map((h) => (
               <tr key={h.id} className="border-b border-zinc-800 last:border-0">
                 <td className="py-2 px-4">{h.nameEn}</td>
                 <td className="py-2 px-4 text-right">{h.quantity.toLocaleString("en-US", { maximumFractionDigits: 3 })}</td>

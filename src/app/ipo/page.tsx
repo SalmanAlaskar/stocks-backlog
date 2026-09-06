@@ -4,16 +4,44 @@ import { formatSar } from "@/lib/money";
 import IpoSubscribeForm from "@/components/IpoSubscribeForm";
 import { simulateAllocationAction } from "./actions";
 
-export default async function IpoPage() {
+const SORTS = {
+  date_desc: { label: "Newest first" },
+  date_asc: { label: "Oldest first" },
+  status: { label: "Status" },
+} as const;
+type SortKey = keyof typeof SORTS;
+const STATUS_ORDER: Record<string, number> = { OPEN: 0, ALLOCATED: 1, CLOSED: 2 };
+
+export default async function IpoPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ sort?: string }>;
+}) {
   const user = await requireVerifiedUser();
+  const { sort } = await searchParams;
+  const sortKey: SortKey = sort && sort in SORTS ? (sort as SortKey) : "date_desc";
   const ipos = await db.ipo.findMany({ orderBy: { subscriptionStart: "desc" } });
+  if (sortKey === "date_asc") ipos.reverse();
+  else if (sortKey === "status") ipos.sort((a, b) => (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99));
   const mySubs = await db.ipoSubscription.findMany({ where: { userId: user.id } });
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold">IPO Subscriptions</h1>
-        <p className="text-sm text-zinc-400">Subscribe to new TASI/Nomu listings using your Derayah Wallet balance.</p>
+      <div className="flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-xl font-semibold">IPO Subscriptions</h1>
+          <p className="text-sm text-zinc-400">Subscribe to new TASI/Nomu listings using your Derayah Wallet balance.</p>
+        </div>
+        {ipos.length > 1 && (
+          <form className="flex items-center gap-2" method="get">
+            <select name="sort" defaultValue={sortKey} className="bg-zinc-900 text-zinc-100 rounded border border-zinc-700 px-2 py-1.5 text-sm">
+              {Object.entries(SORTS).map(([key, { label }]) => (
+                <option key={key} value={key}>{label}</option>
+              ))}
+            </select>
+            <button type="submit" className="rounded bg-emerald-600 text-white px-3 py-1.5 text-sm hover:bg-emerald-500">Sort</button>
+          </form>
+        )}
       </div>
 
       {ipos.length === 0 ? (

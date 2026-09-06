@@ -4,14 +4,23 @@ import { getHoldings } from "@/lib/portfolio";
 import { formatSar, formatPercent } from "@/lib/money";
 import { analyzePortfolioRisk } from "@/lib/ai";
 
+const SORTS = {
+  ticker: { label: "Stock (A-Z)" },
+  value_desc: { label: "Market value (high-low)" },
+  gain_desc: { label: "Gain % (high-low)" },
+  gain_asc: { label: "Gain % (low-high)" },
+} as const;
+type SortKey = keyof typeof SORTS;
+
 export default async function PortfolioPage({
   searchParams,
 }: {
-  searchParams: Promise<{ sector?: string; shariah?: string }>;
+  searchParams: Promise<{ sector?: string; shariah?: string; sort?: string }>;
 }) {
   const user = await requireVerifiedUser();
   const allHoldings = await getHoldings(user.id);
-  const { sector, shariah } = await searchParams;
+  const { sector, shariah, sort } = await searchParams;
+  const sortKey: SortKey = sort && sort in SORTS ? (sort as SortKey) : "ticker";
 
   // Risk insights and the sector/compliance breakdowns always reflect the whole
   // portfolio; only the holdings table itself is filtered.
@@ -30,9 +39,15 @@ export default async function PortfolioPage({
   }
 
   const sectors = [...new Set(allHoldings.map((h) => h.stock.sector))].sort();
+  const gainPctOf = (h: (typeof allHoldings)[number]) =>
+    h.costBasisHalalas > 0n ? (Number(h.unrealizedPnlHalalas) / Number(h.costBasisHalalas)) * 100 : 0;
   const holdings = allHoldings.filter(
     (h) => (!sector || h.stock.sector === sector) && (shariah !== "1" || h.stock.shariahCompliant),
   );
+  if (sortKey === "ticker") holdings.sort((a, b) => a.stock.ticker.localeCompare(b.stock.ticker));
+  else if (sortKey === "value_desc") holdings.sort((a, b) => (b.marketValueHalalas < a.marketValueHalalas ? -1 : b.marketValueHalalas > a.marketValueHalalas ? 1 : 0));
+  else if (sortKey === "gain_desc") holdings.sort((a, b) => gainPctOf(b) - gainPctOf(a));
+  else if (sortKey === "gain_asc") holdings.sort((a, b) => gainPctOf(a) - gainPctOf(b));
 
   return (
     <div className="space-y-6">
@@ -72,8 +87,13 @@ export default async function PortfolioPage({
                 <input type="checkbox" name="shariah" value="1" defaultChecked={shariah === "1"} />
                 Shariah-compliant only
               </label>
-              <button type="submit" className="rounded bg-emerald-600 text-white px-3 py-1.5 text-sm hover:bg-emerald-500">Filter</button>
-              {(sector || shariah === "1") && <Link href="/portfolio" className="text-sm text-zinc-400 hover:text-zinc-200">Clear</Link>}
+              <select name="sort" defaultValue={sortKey} className="bg-zinc-900 text-zinc-100 rounded border border-zinc-700 px-2 py-1.5 text-sm">
+                {Object.entries(SORTS).map(([key, { label }]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
+              </select>
+              <button type="submit" className="rounded bg-emerald-600 text-white px-3 py-1.5 text-sm hover:bg-emerald-500">Apply</button>
+              {(sector || shariah === "1" || sortKey !== "ticker") && <Link href="/portfolio" className="text-sm text-zinc-400 hover:text-zinc-200">Clear</Link>}
             </form>
           )}
         </div>

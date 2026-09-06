@@ -5,13 +5,21 @@ import { currentPriceHalalas } from "@/lib/market";
 import { formatSar, formatPercent } from "@/lib/money";
 import { createWatchlistAction, deleteWatchlistAction, removeFromWatchlistAction } from "./actions";
 
+const SORTS = {
+  ticker: { label: "Stock (A-Z)" },
+  change_desc: { label: "Highest increase first" },
+  change_asc: { label: "Biggest decrease first" },
+} as const;
+type SortKey = keyof typeof SORTS;
+
 export default async function WatchlistsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ shariah?: string }>;
+  searchParams: Promise<{ shariah?: string; sort?: string }>;
 }) {
   const user = await requireVerifiedUser();
-  const { shariah } = await searchParams;
+  const { shariah, sort } = await searchParams;
+  const sortKey: SortKey = sort && sort in SORTS ? (sort as SortKey) : "ticker";
   const watchlists = await db.watchlist.findMany({
     where: { userId: user.id },
     orderBy: { createdAt: "asc" },
@@ -41,13 +49,26 @@ export default async function WatchlistsPage({
             <input type="checkbox" name="shariah" value="1" defaultChecked={shariah === "1"} />
             Shariah-compliant only
           </label>
-          <button type="submit" className="rounded bg-emerald-600 text-white px-3 py-1.5 text-sm hover:bg-emerald-500">Filter</button>
-          {shariah === "1" && <Link href="/watchlists" className="text-sm text-zinc-400 hover:text-zinc-200">Clear</Link>}
+          <select name="sort" defaultValue={sortKey} className="bg-zinc-900 text-zinc-100 rounded border border-zinc-700 px-2 py-1.5 text-sm">
+            {Object.entries(SORTS).map(([key, { label }]) => (
+              <option key={key} value={key}>{label}</option>
+            ))}
+          </select>
+          <button type="submit" className="rounded bg-emerald-600 text-white px-3 py-1.5 text-sm hover:bg-emerald-500">Apply</button>
+          {(shariah === "1" || sortKey !== "ticker") && <Link href="/watchlists" className="text-sm text-zinc-400 hover:text-zinc-200">Clear</Link>}
         </form>
       )}
 
       {watchlists.map((wl) => {
-        const items = shariah === "1" ? wl.items.filter((item) => item.stock.shariahCompliant) : wl.items;
+        const filtered = shariah === "1" ? wl.items.filter((item) => item.stock.shariahCompliant) : wl.items;
+        const rows = filtered.map((item) => {
+          const price = currentPriceHalalas(item.stock.ticker, item.stock.previousCloseHalalas, now, item.stock.lastRealPriceHalalas, item.stock.lastRealPriceAt);
+          const changePct = (Number(price - item.stock.previousCloseHalalas) / Number(item.stock.previousCloseHalalas)) * 100;
+          return { item, price, changePct };
+        });
+        if (sortKey === "ticker") rows.sort((a, b) => a.item.stock.ticker.localeCompare(b.item.stock.ticker));
+        else if (sortKey === "change_desc") rows.sort((a, b) => b.changePct - a.changePct);
+        else if (sortKey === "change_asc") rows.sort((a, b) => a.changePct - b.changePct);
         return (
         <div key={wl.id} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
@@ -57,31 +78,27 @@ export default async function WatchlistsPage({
               <button type="submit" className="text-xs text-red-400 hover:underline">Delete watchlist</button>
             </form>
           </div>
-          {items.length === 0 ? (
+          {rows.length === 0 ? (
             <p className="text-sm text-zinc-400">{wl.items.length === 0 ? "No stocks added yet." : "No stocks match this filter."}</p>
           ) : (
             <table className="w-full text-sm">
               <tbody>
-                {items.map((item) => {
-                  const price = currentPriceHalalas(item.stock.ticker, item.stock.previousCloseHalalas, now, item.stock.lastRealPriceHalalas, item.stock.lastRealPriceAt);
-                  const changePct = (Number(price - item.stock.previousCloseHalalas) / Number(item.stock.previousCloseHalalas)) * 100;
-                  return (
-                    <tr key={item.id} className="border-b border-zinc-800 last:border-0">
-                      <td className="py-2">
-                        <Link href={`/market/${item.stock.ticker}`} className="font-medium text-emerald-400">{item.stock.ticker}</Link>
-                        <span className="text-zinc-400 ml-2">{item.stock.nameEn}</span>
-                      </td>
-                      <td className="py-2 text-right">{formatSar(price)}</td>
-                      <td className={`py-2 text-right ${changePct >= 0 ? "text-emerald-400" : "text-red-400"}`}>{formatPercent(changePct)}</td>
-                      <td className="py-2 text-right">
-                        <form action={removeFromWatchlistAction}>
-                          <input type="hidden" name="itemId" value={item.id} />
-                          <button type="submit" className="text-xs text-zinc-400 hover:text-red-400">Remove</button>
-                        </form>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {rows.map(({ item, price, changePct }) => (
+                  <tr key={item.id} className="border-b border-zinc-800 last:border-0">
+                    <td className="py-2">
+                      <Link href={`/market/${item.stock.ticker}`} className="font-medium text-emerald-400">{item.stock.ticker}</Link>
+                      <span className="text-zinc-400 ml-2">{item.stock.nameEn}</span>
+                    </td>
+                    <td className="py-2 text-right">{formatSar(price)}</td>
+                    <td className={`py-2 text-right ${changePct >= 0 ? "text-emerald-400" : "text-red-400"}`}>{formatPercent(changePct)}</td>
+                    <td className="py-2 text-right">
+                      <form action={removeFromWatchlistAction}>
+                        <input type="hidden" name="itemId" value={item.id} />
+                        <button type="submit" className="text-xs text-zinc-400 hover:text-red-400">Remove</button>
+                      </form>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           )}

@@ -7,14 +7,22 @@ import { WalletTxType } from "@/generated/prisma/client";
 
 const TX_TYPES = Object.values(WalletTxType);
 
+const SORTS = {
+  date_desc: { label: "Newest first" },
+  date_asc: { label: "Oldest first" },
+  amount_desc: { label: "Amount (high-low)" },
+} as const;
+type SortKey = keyof typeof SORTS;
+
 export default async function WalletPage({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string }>;
+  searchParams: Promise<{ type?: string; sort?: string }>;
 }) {
   const user = await requireVerifiedUser();
-  const { type } = await searchParams;
+  const { type, sort } = await searchParams;
   const typeFilter = type && (TX_TYPES as string[]).includes(type) ? (type as WalletTxType) : undefined;
+  const sortKey: SortKey = sort && sort in SORTS ? (sort as SortKey) : "date_desc";
 
   const wallet = await db.wallet.findUniqueOrThrow({
     where: { userId: user.id },
@@ -26,6 +34,8 @@ export default async function WalletPage({
       },
     },
   });
+  if (sortKey === "date_asc") wallet.transactions.reverse();
+  else if (sortKey === "amount_desc") wallet.transactions.sort((a, b) => (b.amountHalalas < a.amountHalalas ? -1 : b.amountHalalas > a.amountHalalas ? 1 : 0));
   const available = wallet.balanceHalalas - wallet.reservedHalalas;
 
   return (
@@ -71,8 +81,13 @@ export default async function WalletPage({
                 <option key={t} value={t}>{t.replace("_", " ")}</option>
               ))}
             </select>
-            <button type="submit" className="rounded bg-emerald-600 text-white px-3 py-1.5 text-sm hover:bg-emerald-500">Filter</button>
-            {type && <Link href="/wallet" className="text-sm text-zinc-400 hover:text-zinc-200">Clear</Link>}
+            <select name="sort" defaultValue={sortKey} className="bg-zinc-900 text-zinc-100 rounded border border-zinc-700 px-2 py-1.5 text-sm">
+              {Object.entries(SORTS).map(([key, { label }]) => (
+                <option key={key} value={key}>{label}</option>
+              ))}
+            </select>
+            <button type="submit" className="rounded bg-emerald-600 text-white px-3 py-1.5 text-sm hover:bg-emerald-500">Apply</button>
+            {(type || sortKey !== "date_desc") && <Link href="/wallet" className="text-sm text-zinc-400 hover:text-zinc-200">Clear</Link>}
           </form>
         </div>
         {wallet.transactions.length === 0 ? (

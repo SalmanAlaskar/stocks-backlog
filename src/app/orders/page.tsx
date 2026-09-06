@@ -17,16 +17,25 @@ const STATUS_STYLES: Record<string, string> = {
 
 const STATUSES = Object.values(OrderStatus);
 
+const SORTS = {
+  date_desc: { label: "Newest first" },
+  date_asc: { label: "Oldest first" },
+  qty_desc: { label: "Quantity (high-low)" },
+  ticker: { label: "Stock (A-Z)" },
+} as const;
+type SortKey = keyof typeof SORTS;
+
 export default async function OrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; side?: string }>;
+  searchParams: Promise<{ status?: string; side?: string; sort?: string }>;
 }) {
   const user = await requireVerifiedUser();
   await evaluatePendingOrders(user.id);
-  const { status, side } = await searchParams;
+  const { status, side, sort } = await searchParams;
   const statusFilter = status && (STATUSES as string[]).includes(status) ? (status as OrderStatus) : undefined;
   const sideFilter = side === "BUY" || side === "SELL" ? (side as OrderSide) : undefined;
+  const sortKey: SortKey = sort && sort in SORTS ? (sort as SortKey) : "date_desc";
 
   const orders = await db.order.findMany({
     where: {
@@ -37,6 +46,9 @@ export default async function OrdersPage({
     orderBy: { createdAt: "desc" },
     include: { stock: true },
   });
+  if (sortKey === "date_asc") orders.reverse();
+  else if (sortKey === "qty_desc") orders.sort((a, b) => b.quantity - a.quantity);
+  else if (sortKey === "ticker") orders.sort((a, b) => a.stock.ticker.localeCompare(b.stock.ticker));
 
   return (
     <div className="space-y-6">
@@ -57,8 +69,13 @@ export default async function OrdersPage({
           <option value="BUY">Buy only</option>
           <option value="SELL">Sell only</option>
         </select>
-        <button type="submit" className="rounded bg-emerald-600 text-white px-4 py-2 text-sm hover:bg-emerald-500">Filter</button>
-        {(status || side) && <Link href="/orders" className="text-sm text-zinc-400 hover:text-zinc-200">Clear filters</Link>}
+        <select name="sort" defaultValue={sortKey} className="bg-zinc-900 text-zinc-100 rounded border border-zinc-700 px-3 py-2 text-sm">
+          {Object.entries(SORTS).map(([key, { label }]) => (
+            <option key={key} value={key}>{label}</option>
+          ))}
+        </select>
+        <button type="submit" className="rounded bg-emerald-600 text-white px-4 py-2 text-sm hover:bg-emerald-500">Apply</button>
+        {(status || side || sortKey !== "date_desc") && <Link href="/orders" className="text-sm text-zinc-400 hover:text-zinc-200">Clear filters</Link>}
       </form>
 
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-x-auto">
