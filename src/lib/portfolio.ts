@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { currentPriceHalalas } from "@/lib/market";
+import { fetchTadawulQuote } from "@/lib/tadawulData";
 import type { Stock } from "@/generated/prisma/client";
 
 export interface Holding {
@@ -61,6 +62,30 @@ export async function getHoldings(userId: string): Promise<Holding[]> {
     });
   }
   return holdings;
+}
+
+const LIVE_REFRESH_MIN_AGE_MS = 60_000;
+
+/** Like getHoldings, but first re-fetches quotes for held stocks whose cached price is older than a minute. Falls back to cached prices per stock if the source is unreachable. */
+export async function getHoldingsWithLivePrices(userId: string): Promise<Holding[]> {
+  const holdings = await getHoldings(userId);
+  const nowMs = Date.now();
+  const stale = holdings.filter((h) => !h.stock.lastRealPriceAt || nowMs - h.stock.lastRealPriceAt.getTime() > LIVE_REFRESH_MIN_AGE_MS);
+  if (stale.length === 0) return holdings;
+
+  const quotes = await Promise.all(stale.map(async (h) => ({ stockId: h.stock.id, quote: await fetchTadawulQuote(h.stock.ticker, "5d") })));
+  const fresh = quotes.filter((q) => q.quote != null);
+  if (fresh.length === 0) return holdings;
+
+  await Promise.all(
+    fresh.map((q) =>
+      db.stock.update({
+        where: { id: q.stockId },
+        data: { lastRealPriceHalalas: q.quote!.currentPriceHalalas, lastRealPriceAt: q.quote!.asOf },
+      }),
+    ),
+  );
+  return getHoldings(userId);
 }
 
 export async function getSharesHeld(userId: string, stockId: string): Promise<number> {

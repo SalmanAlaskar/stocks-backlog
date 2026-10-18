@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireVerifiedUser } from "@/lib/auth";
-import { getHoldings } from "@/lib/portfolio";
+import { getHoldingsWithLivePrices } from "@/lib/portfolio";
 import { formatSar, formatPercent } from "@/lib/money";
 import { analyzePortfolioRisk } from "@/lib/ai";
 
@@ -18,7 +18,7 @@ export default async function PortfolioPage({
   searchParams: Promise<{ sector?: string; shariah?: string; sort?: string }>;
 }) {
   const user = await requireVerifiedUser();
-  const allHoldings = await getHoldings(user.id);
+  const allHoldings = await getHoldingsWithLivePrices(user.id);
   const { sector, shariah, sort } = await searchParams;
   const sortKey: SortKey = sort && sort in SORTS ? (sort as SortKey) : "ticker";
 
